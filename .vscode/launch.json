@@ -17,6 +17,24 @@
             "name": "Release FieldGuideEmbed (FieldGuideEmbed)",
             "program": "${workspaceFolder:calhacks}/FieldGuideEmbed/.build/release/FieldGuideEmbed",
             "preLaunchTask": "swift: Build Release FieldGuideEmbed (FieldGuideEmbed)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:calhacks}/FieldGuideEmbed",
+            "name": "Debug Embed (FieldGuideEmbed)",
+            "program": "${workspaceFolder:calhacks}/FieldGuideEmbed/.build/debug/Embed",
+            "preLaunchTask": "swift: Build Debug Embed (FieldGuideEmbed)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:calhacks}/FieldGuideEmbed",
+            "name": "Release Embed (FieldGuideEmbed)",
+            "program": "${workspaceFolder:calhacks}/FieldGuideEmbed/.build/release/Embed",
+            "preLaunchTask": "swift: Build Release Embed (FieldGuideEmbed)"
         }
     ]
 }

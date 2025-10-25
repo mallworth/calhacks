@@ -12,10 +12,6 @@ class NativeChannels {
       if (res == null) {
         return [];
       }
-      if (res is! List) {
-        print('NativeChannels.embed: Unexpected result type: ${res.runtimeType}');
-        return [];
-      }
       try {
         return res.map((e) => (e as num).toDouble()).toList();
       } catch (e) {
