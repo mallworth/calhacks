@@ -3,11 +3,21 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  private var embedService: EmbedService?
+  
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    
     GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    
+    // Register embed service using FlutterEngine
+    if let controller = window?.rootViewController as? FlutterViewController {
+      embedService = EmbedService(binaryMessenger: controller.binaryMessenger)
+    }
+    
+    return result
   }
 }

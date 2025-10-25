@@ -10,8 +10,13 @@
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		501CB62F2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 501CB62E2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx */; };
+		501CB6312EAD40C400A34FA5 /* tokenizer.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6302EAD40C400A34FA5 /* tokenizer.json */; };
 		50F181672EAC542C0067D23D /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 50F181662EAC542C0067D23D /* onnxruntime */; };
 		50F181692EAC542C0067D23D /* onnxruntime_extensions in Frameworks */ = {isa = PBXBuildFile; productRef = 50F181682EAC542C0067D23D /* onnxruntime_extensions */; };
+		50F181711EAC6B000067D23D /* Embedder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F181701EAC6B000067D23D /* Embedder.swift */; };
+		50F181721EAC6B000067D23D /* EmbedService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F181721EAC6B100067D23D /* EmbedService.swift */; };
+		50F181752EAC6C000067D23D /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = 50F181742EAC6C000067D23D /* Transformers */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
@@ -47,6 +52,12 @@
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		501CB62E2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; name = "bge-small-en-v1.5.onnx"; path = "Runner/Models/bge-small-en-v1.5.onnx"; sourceTree = "<group>"; };
+		501CB6302EAD40C400A34FA5 /* tokenizer.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = tokenizer.json; path = Runner/Models/tokenizer.json; sourceTree = "<group>"; };
+		50F181701EAC6B000067D23D /* Embedder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Embedder.swift; sourceTree = "<group>"; };
+		50F181721EAC6B100067D23D /* EmbedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbedService.swift; sourceTree = "<group>"; };
+		50F181752EAC71800067D23D /* Models/bge-small-en-v1.5.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Models/bge-small-en-v1.5.onnx"; sourceTree = "<group>"; };
+		50F181772EAC718E0067D23D /* Models/tokenizer.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Models/tokenizer.json; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
@@ -66,6 +77,7 @@
 			files = (
 				50F181692EAC542C0067D23D /* onnxruntime_extensions in Frameworks */,
 				50F181672EAC542C0067D23D /* onnxruntime in Frameworks */,
+				50F181752EAC6C000067D23D /* Transformers in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,6 +106,8 @@
 		97C146E51CF9000F007C117D = {
 			isa = PBXGroup;
 			children = (
+				501CB6302EAD40C400A34FA5 /* tokenizer.json */,
+				501CB62E2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx */,
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
@@ -120,6 +134,10 @@
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+				50F181701EAC6B000067D23D /* Embedder.swift */,
+				50F181721EAC6B100067D23D /* EmbedService.swift */,
+				50F181752EAC71800067D23D /* Models/bge-small-en-v1.5.onnx */,
+				50F181772EAC718E0067D23D /* Models/tokenizer.json */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -196,6 +214,7 @@
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
 				50F181652EAC542C0067D23D /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+				50F181732EAC6C000067D23D /* XCRemoteSwiftPackageReference "swift-transformers" */,
 			);
 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
 			projectDirPath = "";
@@ -219,6 +238,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				501CB6312EAD40C400A34FA5 /* tokenizer.json in Resources */,
+				501CB62F2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx in Resources */,
 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
@@ -277,6 +298,8 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				50F181711EAC6B000067D23D /* Embedder.swift in Sources */,
+				50F181721EAC6B000067D23D /* EmbedService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -353,7 +376,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -480,7 +503,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -531,7 +554,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -631,6 +654,14 @@
 				minimumVersion = 1.20.0;
 			};
 		};
+		50F181732EAC6C000067D23D /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -643,6 +674,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 50F181652EAC542C0067D23D /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
 			productName = onnxruntime_extensions;
+		};
+		50F181742EAC6C000067D23D /* Transformers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 50F181732EAC6C000067D23D /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Transformers;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
