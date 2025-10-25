@@ -9989,22 +9989,3 @@ interventions.
 observation if inhalation burn is suspected); cautions regarding prior therapies or interventions (e.g. time of last adrenaline
 dose to anticipate return symptoms, need to monitor mental status if sedating medications have been given, need to
 monitor 3-way dressing for clotting, etc.).
-230
-
---- Page 240 ---
-ISBN 978-92-4-151308-1
-World Health Organization
-Avenue Appia 20
-1211 Geneva 27
-Switzerland
-Email: emergencycare@who.int
-BASIC
-EMERGENCY
-CARE:
-Approach
-to
-the
-acutely
-ill
-and
-injured

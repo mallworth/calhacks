@@ -1,44 +1,3 @@
---- Page 1 ---
-FIRST
-AID
-POCKET GUIDE
-
---- Page 2 ---
-This booklet is not intended to replace proper first aid or CPR training.
-All rights reserved. No part of this publication may be reproduced,
-stored in a retrieval system, or transmitted, in any form or by any means,
-electronic, mechanical, photocopying, recording, or otherwise, without
-prior written permission from The Canadian Red Cross Society.
-The Canadian Red Cross Society has made reasonable efforts to ensure
-the contents of this publication are accurate and reflect the latest in
-available scientific research on the topic as of the date published. The
-information contained in this publication may change as new scientific
-research becomes available. Certain techniques described in this
-publication are designed for use in lifesaving situations. However, the
-Canadian Red Cross Society cannot guarantee that the use of such
-techniques will prevent personal injury or loss of life.
-
---- Page 3 ---
-FIRST AID POCKET GUIDE:
-Designed to fit in your pocket or be kept in
-a safe place in your home or vehicle, this
-guide will help you respond to a wide range of
-emergency situations.
-GET CERTIFIED:
-For official First Aid and CPR training info, visit:
-redcross.ca/learnfirstaid
-DOWNLOAD OUR
-FIRST AID APP:
-redcross.ca/firstaidapp
-
---- Page 4 ---
-Recognize and Act
-CHECK
-Airway, breathing
-& circulation
-CARE CALL
-Provide care and 911/Poison Control
-reassurance
 
 --- Page 5 ---
 CHECK
@@ -260,10 +219,3 @@ medicine, drugs, toxic chemicals.
 sick or give then anything to drink unless
 poison control has provided instructions
 to do so.
-
---- Page 20 ---
-CONTACT:
-1-877-356-3226
-wecare@redcross.ca
-FOR MORE INFO:
-redcross.ca/morefirstaid
