@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'services/native_channels.dart';
 
@@ -23,9 +21,8 @@ class _DemoPageState extends State<DemoPage> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _ragResults = [];
   List<bool> _expanded = [];
-  
-  // Hardcoded reference text
-  static const String referenceText = "Apply direct pressure to stop bleeding. Use a clean cloth or bandage and maintain pressure for several minutes.";
+  String _llmResponse = "";
+  bool _isGenerating = false;
   
   @override
   void initState() {
@@ -60,71 +57,67 @@ class _DemoPageState extends State<DemoPage> {
     
     setState(() {
       _isLoading = true;
-      // _output = "Computing embeddings...";
+      _isGenerating = false;
       _ragResults = [];
       _expanded = [];
+      _llmResponse = "";
     });
 
     try {
-      // Get embeddings for both texts
-      final refEmbed = await NativeChannels.embed(referenceText);
+      // Step 1: Get embedding for the query
       final queryEmbed = await NativeChannels.embed(query);
 
-      final similarity = _cosineSimilarity(refEmbed, queryEmbed);
-
-      final percentage = (similarity * 100).toStringAsFixed(1);
-
+      // Step 2: Search RAG database for relevant context
       final ragResults = await NativeChannels.ragSearch(queryEmbed, topK: 3);
 
       setState(() {
-        // _output = "Similarity: $percentage%";
         _ragResults = ragResults;
         _expanded = List<bool>.filled(ragResults.length, false);
         _isLoading = false;
+        _isGenerating = true;
+      });
+
+      // Step 3: Format context from RAG results
+      final context = _formatContext(ragResults);
+
+      // Step 4: Generate LLM response with context
+      final llmResponse = await NativeChannels.generate(query, context: context);
+
+      setState(() {
+        _llmResponse = llmResponse;
+        _isGenerating = false;
       });
     } catch (e) {
       setState(() {
         _output = "Error: $e";
         _ragResults = [];
         _expanded = [];
+        _llmResponse = "";
         _isLoading = false;
+        _isGenerating = false;
       });
     }
   }
 
-  Future<void> _testLLM() async {
-    final res = await NativeChannels.generate(_controller.text);
-    setState(() => _output = res);
-  }
-
-  double _cosineSimilarity(List<double> a, List<double> b) {
-    if (a.length != b.length || a.isEmpty) {
-      return 0.0;
+  String _formatContext(List<Map<String, dynamic>> results) {
+    if (results.isEmpty) return "";
+    
+    final buffer = StringBuffer();
+    for (var i = 0; i < results.length; i++) {
+      final result = results[i];
+      final source = result['source'] ?? 'Unknown';
+      final text = result['text'] ?? '';
+      buffer.writeln('[D${i + 1}] $source');
+      buffer.writeln(text.trim());
+      buffer.writeln();
     }
-
-    double dot = 0.0;
-    double normA = 0.0;
-    double normB = 0.0;
-
-    for (var i = 0; i < a.length; i++) {
-      final av = a[i];
-      final bv = b[i];
-      dot += av * bv;
-      normA += av * av;
-      normB += bv * bv;
-    }
-
-    final denom = normA > 0 && normB > 0 ? sqrt(normA) * sqrt(normB) : 0.0;
-    if (denom == 0.0) {
-      return 0.0;
-    }
-    return (dot / denom).clamp(-1.0, 1.0);
+    return buffer.toString().trim();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Embedding Similarity Test")),
+      appBar: AppBar(title: const Text("FieldGuide RAG Assistant")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
@@ -133,7 +126,7 @@ class _DemoPageState extends State<DemoPage> {
             children: [
               // Query input
               const Text(
-                "Your Query:",
+                "Your Emergency/Survival Query:",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -141,7 +134,7 @@ class _DemoPageState extends State<DemoPage> {
                 controller: _controller,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: "Enter your query here...",
+                  hintText: "e.g., How do I stop severe bleeding?",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -151,21 +144,41 @@ class _DemoPageState extends State<DemoPage> {
               
               // Submit button
               ElevatedButton(
-                onPressed: _isLoading ? null : _calculateSimilarity,
+                onPressed: (_isLoading || _isGenerating) ? null : _calculateSimilarity,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text("Searching knowledge base..."),
+                        ],
                       )
-                    : const Text("Calculate Similarity", style: TextStyle(fontSize: 16)),
+                    : _isGenerating
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              SizedBox(width: 8),
+                              Text("Generating response..."),
+                            ],
+                          )
+                        : const Text("Get Answer", style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
 
-              if (_output.isNotEmpty) ...[
+              if (_output.isNotEmpty && !_isLoading && !_isGenerating && _llmResponse.isEmpty) ...[
                 Text(
                   _output,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -174,10 +187,32 @@ class _DemoPageState extends State<DemoPage> {
                 const SizedBox(height: 16),
               ],
               
+              // LLM Response Section
+              if (_llmResponse.isNotEmpty) ...[
+                const Text(
+                  "FieldGuide Response:",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  elevation: 2,
+                  color: Colors.blue.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      _llmResponse,
+                      style: const TextStyle(fontSize: 15, height: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+              
               if (_ragResults.isNotEmpty) ...[
+                const Divider(),
                 const SizedBox(height: 8),
                 const Text(
-                  "Top Knowledge Base Matches:",
+                  "Source Documents (tap to expand):",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
