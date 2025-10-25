@@ -35,7 +35,15 @@ class NativeChannels {
   }
 
   static Future<String> generate(String prompt) async {
-    final res = await _llm.invokeMethod<String>('generate', {'prompt': prompt});
-    return res ?? "";
+    try {
+      final res = await _llm.invokeMethod<String>('generate', {'prompt': prompt});
+      return res ?? "";
+    } on PlatformException catch (e) {
+      print('PlatformException in generate: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Unexpected error in generate: $e');
+      rethrow;
+    }
   }
 }
