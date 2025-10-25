@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 class NativeChannels {
   static const _embed = MethodChannel('survival/embed');
   static const _llm = MethodChannel('survival/llm');
+  static const _rag = MethodChannel('survival/rag');
 
   static Future<List<double>> embed(String text) async {
     try {
@@ -40,6 +41,34 @@ class NativeChannels {
     } catch (e) {
       print('Unexpected error in generate: $e');
       rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> ragSearch(
+    List<double> embedding, {
+    int topK = 3,
+  }) async {
+    try {
+      final res = await _rag.invokeMethod<List<dynamic>>('search', {
+        'embedding': embedding,
+        'topK': topK,
+      });
+      if (res == null) {
+        return [];
+      }
+      return res
+          .whereType<Map>()
+          .map((row) => row.map((key, value) => MapEntry(key.toString(), value)))
+          .toList();
+    } on PlatformException catch (e) {
+      print('NativeChannels.ragSearch: PlatformException: ${e.message}');
+      return [];
+    } on MissingPluginException catch (e) {
+      print('NativeChannels.ragSearch: MissingPluginException: ${e.message}');
+      return [];
+    } catch (e) {
+      print('NativeChannels.ragSearch: Unknown error: $e');
+      return [];
     }
   }
 }

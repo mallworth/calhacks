@@ -16,10 +16,12 @@
 		501CB6352EAD481300A34FA5 /* tokenizer_config.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6342EAD481300A34FA5 /* tokenizer_config.json */; };
 		501CB6372EAD482000A34FA5 /* special_tokens_map.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6362EAD482000A34FA5 /* special_tokens_map.json */; };
 		501CB6392EAD482C00A34FA5 /* vocab.txt in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6382EAD482C00A34FA5 /* vocab.txt */; };
+		501CB63B2EAD5F9A00A34FA5 /* rag_database.db in Resources */ = {isa = PBXBuildFile; fileRef = 501CB63A2EAD5F9A00A34FA5 /* rag_database.db */; };
 		50F181672EAC542C0067D23D /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 50F181662EAC542C0067D23D /* onnxruntime */; };
 		50F181692EAC542C0067D23D /* onnxruntime_extensions in Frameworks */ = {isa = PBXBuildFile; productRef = 50F181682EAC542C0067D23D /* onnxruntime_extensions */; };
 		50F181711EAC6B000067D23D /* Embedder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F181701EAC6B000067D23D /* Embedder.swift */; };
 		50F181721EAC6B000067D23D /* EmbedService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F181721EAC6B100067D23D /* EmbedService.swift */; };
+		501CB63F2EAD6D6D00A34FA5 /* RAGService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501CB63E2EAD6D6D00A34FA5 /* RAGService.swift */; };
 		50F181752EAC6C000067D23D /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = 50F181742EAC6C000067D23D /* Transformers */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -62,8 +64,10 @@
 		501CB6342EAD481300A34FA5 /* tokenizer_config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = tokenizer_config.json; path = "../../onnx-out/tokenizer_config.json"; sourceTree = "<group>"; };
 		501CB6362EAD482000A34FA5 /* special_tokens_map.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = special_tokens_map.json; path = "../../onnx-out/special_tokens_map.json"; sourceTree = "<group>"; };
 		501CB6382EAD482C00A34FA5 /* vocab.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = vocab.txt; path = "../../onnx-out/vocab.txt"; sourceTree = "<group>"; };
+		501CB63A2EAD5F9A00A34FA5 /* rag_database.db */ = {isa = PBXFileReference; lastKnownFileType = file; name = rag_database.db; path = Runner/Database/rag_database.db; sourceTree = "<group>"; };
 		50F181701EAC6B000067D23D /* Embedder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Embedder.swift; sourceTree = "<group>"; };
 		50F181721EAC6B100067D23D /* EmbedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbedService.swift; sourceTree = "<group>"; };
+		501CB63E2EAD6D6D00A34FA5 /* RAGService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGService.swift; sourceTree = "<group>"; };
 		50F181752EAC71800067D23D /* Models/bge-small-en-v1.5.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Models/bge-small-en-v1.5.onnx"; sourceTree = "<group>"; };
 		50F181772EAC718E0067D23D /* Models/tokenizer.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Models/tokenizer.json; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -118,6 +122,7 @@
 				501CB6362EAD482000A34FA5 /* special_tokens_map.json */,
 				501CB6342EAD481300A34FA5 /* tokenizer_config.json */,
 				501CB6322EAD47FF00A34FA5 /* config.json */,
+				501CB63A2EAD5F9A00A34FA5 /* rag_database.db */,
 				501CB6302EAD40C400A34FA5 /* tokenizer.json */,
 				501CB62E2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx */,
 				9740EEB11CF90186004384FC /* Flutter */,
@@ -148,6 +153,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				50F181701EAC6B000067D23D /* Embedder.swift */,
 				50F181721EAC6B100067D23D /* EmbedService.swift */,
+				501CB63E2EAD6D6D00A34FA5 /* RAGService.swift */,
 				50F181752EAC71800067D23D /* Models/bge-small-en-v1.5.onnx */,
 				50F181772EAC718E0067D23D /* Models/tokenizer.json */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
@@ -250,6 +256,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				501CB63B2EAD5F9A00A34FA5 /* rag_database.db in Resources */,
 				501CB6392EAD482C00A34FA5 /* vocab.txt in Resources */,
 				501CB6372EAD482000A34FA5 /* special_tokens_map.json in Resources */,
 				501CB6352EAD481300A34FA5 /* tokenizer_config.json in Resources */,
@@ -312,6 +319,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				501CB63F2EAD6D6D00A34FA5 /* RAGService.swift in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				50F181711EAC6B000067D23D /* Embedder.swift in Sources */,

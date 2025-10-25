@@ -4,6 +4,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private var embedService: EmbedService?
+  private var ragService: RAGService?
   
   override func application(
     _ application: UIApplication,
@@ -16,6 +17,7 @@ import UIKit
     // Register embed service using FlutterEngine
     if let controller = window?.rootViewController as? FlutterViewController {
       embedService = EmbedService(binaryMessenger: controller.binaryMessenger)
+      ragService = RAGService(binaryMessenger: controller.binaryMessenger)
     }
     
     return result

@@ -21,6 +21,8 @@ class _DemoPageState extends State<DemoPage> {
   final _controller = TextEditingController();
   String _output = "Waiting for embedder to load...";
   bool _isLoading = false;
+  List<Map<String, dynamic>> _ragResults = [];
+  List<bool> _expanded = [];
   
   // Hardcoded reference text
   static const String referenceText = "Apply direct pressure to stop bleeding. Use a clean cloth or bandage and maintain pressure for several minutes.";
@@ -58,25 +60,33 @@ class _DemoPageState extends State<DemoPage> {
     
     setState(() {
       _isLoading = true;
-      _output = "Computing embeddings...";
+      // _output = "Computing embeddings...";
+      _ragResults = [];
+      _expanded = [];
     });
-    
+
     try {
       // Get embeddings for both texts
       final refEmbed = await NativeChannels.embed(referenceText);
       final queryEmbed = await NativeChannels.embed(query);
-      
+
       final similarity = _cosineSimilarity(refEmbed, queryEmbed);
-      
+
       final percentage = (similarity * 100).toStringAsFixed(1);
-      
+
+      final ragResults = await NativeChannels.ragSearch(queryEmbed, topK: 3);
+
       setState(() {
-        _output = "Similarity: $percentage%";
+        // _output = "Similarity: $percentage%";
+        _ragResults = ragResults;
+        _expanded = List<bool>.filled(ragResults.length, false);
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _output = "Error: $e";
+        _ragResults = [];
+        _expanded = [];
         _isLoading = false;
       });
     }
@@ -117,79 +127,127 @@ class _DemoPageState extends State<DemoPage> {
       appBar: AppBar(title: const Text("Embedding Similarity Test")),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Reference text display
-            const Text(
-              "Reference Text:",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Query input
+              const Text(
+                "Your Query:",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              child: const Text(
-                referenceText,
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Query input
-            const Text(
-              "Your Query:",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _controller,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: "Enter your query here...",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _controller,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: "Enter your query here...",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Submit button
-            ElevatedButton(
-              onPressed: _isLoading ? null : _calculateSimilarity,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text("Calculate Similarity", style: TextStyle(fontSize: 16)),
-            ),
-            const SizedBox(height: 24),
-            
-            // Output
-            if (_output.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
+              const SizedBox(height: 16),
+              
+              // Submit button
+              ElevatedButton(
+                onPressed: _isLoading ? null : _calculateSimilarity,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: Text(
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Calculate Similarity", style: TextStyle(fontSize: 16)),
+              ),
+              const SizedBox(height: 16),
+
+              if (_output.isNotEmpty) ...[
+                Text(
                   _output,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 16),
+              ],
+              
+              if (_ragResults.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  "Top Knowledge Base Matches:",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                for (var i = 0; i < _ragResults.length && i < 3; i++)
+                  _buildResultCard(i),
+              ],
+
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultCard(int index) {
+    final result = _ragResults[index];
+    final expanded = index < _expanded.length ? _expanded[index] : false;
+    final score = (result['score'] as num?)?.toDouble() ?? 0.0;
+    final scorePercent = (score.clamp(-1.0, 1.0) * 100).toStringAsFixed(1);
+
+    return Card(
+      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            if (index < _expanded.length) {
+              _expanded[index] = !_expanded[index];
+            }
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      result['source']?.toString() ?? 'Unknown source',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Text(
+                    "$scorePercent%",
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(expanded ? Icons.expand_less : Icons.expand_more, size: 20),
+                ],
               ),
-          ],
+              if (expanded) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 150,
+                  child: Scrollbar(
+                    child: SingleChildScrollView(
+                      child: Text(
+                        (result['text']?.toString() ?? '').trim(),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

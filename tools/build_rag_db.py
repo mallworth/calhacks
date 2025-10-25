@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Build a SQLite Vec RAG database from text files in kb/ directory.
-Uses ONNX embeddings for semantic search.
+Build a SQLite RAG database from text files in kb/ directory.
+Embeddings are stored in a standard table for on-device cosine search.
 """
 
 import json
@@ -93,59 +93,24 @@ def embed_text(text: str, session: ort.InferenceSession, tokenizer, max_length: 
 
 
 def serialize_f32(vector: np.ndarray) -> bytes:
-    """Serialize float32 vector to bytes for sqlite-vec."""
+    """Serialize float32 vector to bytes for storage."""
     return vector.astype(np.float32).tobytes()
 
 
 def create_database(db_path: str):
-    """Create SQLite database with vec extension."""
+    """Create SQLite database for documents and embeddings."""
     print(f"Creating database at {db_path}")
     conn = sqlite3.connect(db_path)
-    conn.enable_load_extension(True)
     
-    # Load sqlite-vec extension
-    try:
-        # Try local path first (downloaded extension)
-        base_dir = Path(__file__).parent.parent
-        local_vec = str(base_dir / "vec0.dylib")
-        
-        if Path(local_vec).exists():
-            conn.load_extension(local_vec)
-            print(f"✓ Loaded sqlite-vec extension from {local_vec}")
-        else:
-            # Try system paths
-            paths = [
-                "vec0",
-                "/usr/local/lib/vec0.dylib",
-                "/opt/homebrew/lib/vec0.dylib",
-            ]
-            
-            loaded = False
-            for path in paths:
-                try:
-                    conn.load_extension(path)
-                    loaded = True
-                    print(f"✓ Loaded sqlite-vec extension from {path}")
-                    break
-                except:
-                    continue
-            
-            if not loaded:
-                raise Exception("sqlite-vec extension not found")
-            
-    except Exception as e:
-        print(f"Error loading extension: {e}")
-        print("\nTo install sqlite-vec:")
-        print("  Download from: https://github.com/asg017/sqlite-vec/releases")
-        conn.close()
-        raise
-    
-    conn.enable_load_extension(False)
-    
-    # Create tables
+    # Reset database
+    conn.executescript("""
+        DROP TABLE IF EXISTS document_embeddings;
+        DROP TABLE IF EXISTS documents;
+    """)
+
     conn.executescript("""
         -- Main documents table
-        CREATE TABLE IF NOT EXISTS documents (
+        CREATE TABLE documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             source TEXT NOT NULL,
             chunk_id INTEGER NOT NULL,
@@ -153,14 +118,13 @@ def create_database(db_path: str):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         
-        -- Virtual table for vector similarity search
-        CREATE VIRTUAL TABLE IF NOT EXISTS vec_documents USING vec0(
+        -- Embeddings table
+        CREATE TABLE document_embeddings (
             document_id INTEGER PRIMARY KEY,
-            embedding FLOAT[384]
+            embedding BLOB NOT NULL
         );
         
-        -- Index for faster lookups
-        CREATE INDEX IF NOT EXISTS idx_source ON documents(source);
+        CREATE INDEX idx_source ON documents(source);
     """)
     
     conn.commit()
@@ -206,7 +170,7 @@ def process_knowledge_base(kb_dir: Path, session, tokenizer, conn: sqlite3.Conne
                 
                 # Insert embedding
                 conn.execute(
-                    "INSERT INTO vec_documents (document_id, embedding) VALUES (?, ?)",
+                    "INSERT INTO document_embeddings (document_id, embedding) VALUES (?, ?)",
                     (doc_id, serialize_f32(embedding))
                 )
                 
@@ -223,32 +187,35 @@ def process_knowledge_base(kb_dir: Path, session, tokenizer, conn: sqlite3.Conne
 
 
 def test_search(conn: sqlite3.Connection, session, tokenizer, query: str = "How do I stop bleeding?"):
-    """Test the vector search functionality."""
+    """Test the database by computing cosine similarity manually."""
     print(f"\n{'='*60}")
     print(f"Testing search with query: '{query}'")
     print(f"{'='*60}\n")
-    
-    # Generate query embedding
-    query_embedding = embed_text(query, session, tokenizer)
-    
-    # Search for similar documents using vec0 syntax
+
+    query_embedding = embed_text(query, session, tokenizer).astype(np.float32)
+
     cursor = conn.execute("""
-        SELECT 
-            d.source,
-            d.chunk_id,
-            d.text,
-            distance
-        FROM vec_documents v
-        JOIN documents d ON v.document_id = d.id
-        WHERE embedding MATCH ? AND k = 5
-        ORDER BY distance
-    """, (serialize_f32(query_embedding),))
-    
-    results = cursor.fetchall()
-    
-    print(f"Top {len(results)} results:\n")
-    for i, (source, chunk_id, text, distance) in enumerate(results, 1):
-        print(f"{i}. [{source} - chunk {chunk_id}] (distance: {distance:.4f})")
+        SELECT d.source, d.chunk_id, d.text, e.embedding
+        FROM documents d
+        JOIN document_embeddings e ON d.id = e.document_id
+    """)
+
+    rows = []
+    for source, chunk_id, text, blob in cursor:
+        vector = np.frombuffer(blob, dtype=np.float32)
+        if vector.shape != query_embedding.shape:
+            continue
+        dot = float(np.dot(query_embedding, vector))
+        norm = float(np.linalg.norm(query_embedding) * np.linalg.norm(vector))
+        score = 0.0 if norm == 0 else dot / norm
+        rows.append((score, source, chunk_id, text))
+
+    rows.sort(reverse=True, key=lambda r: r[0])
+    top = rows[:5]
+
+    print(f"Top {len(top)} results:\n")
+    for i, (score, source, chunk_id, text) in enumerate(top, 1):
+        print(f"{i}. [{source} - chunk {chunk_id}] (score: {score:.4f})")
         print(f"   {text[:200]}...")
         print()
 
@@ -278,6 +245,9 @@ def main():
     # Process knowledge base
     process_knowledge_base(kb_dir, session, tokenizer, conn)
     
+    # Capture counts before closing
+    total_docs = conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
+    
     # Test search
     test_search(conn, session, tokenizer, "How do I stop severe bleeding?")
     test_search(conn, session, tokenizer, "What should I do for a broken bone?")
@@ -286,7 +256,7 @@ def main():
     conn.close()
     
     print(f"\n✓ Database created successfully at: {db_path}")
-    print(f"  Total documents: {conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0]}")
+    print(f"  Total documents: {total_docs}")
 
 
 if __name__ == "__main__":
