@@ -33,6 +33,9 @@ migrate_working_dir/
 .pub/
 /build/
 
+# Local ML models bundled for iOS
+ios/Runner/Models/
+
 # Symbolication related
 app.*.symbols
 
