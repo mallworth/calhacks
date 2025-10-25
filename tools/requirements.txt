@@ -2,4 +2,3 @@ pdfplumber
 sentence-transformers
 numpy
 tqdm
-
