@@ -1,0 +1,12 @@
+# Flutter
+**/build/
+.dart_tool/
+.packages
+# Xcode
+app/ios/Pods/
+app/ios/.symlinks/
+DerivedData/
+# Python
+tools/.venv/
+__pycache__/
+*.pyc
