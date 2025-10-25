@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:calhacks}/FieldGuideEmbed",
+            "name": "Debug FieldGuideEmbed (FieldGuideEmbed)",
+            "program": "${workspaceFolder:calhacks}/FieldGuideEmbed/.build/debug/FieldGuideEmbed",
+            "preLaunchTask": "swift: Build Debug FieldGuideEmbed (FieldGuideEmbed)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:calhacks}/FieldGuideEmbed",
+            "name": "Release FieldGuideEmbed (FieldGuideEmbed)",
+            "program": "${workspaceFolder:calhacks}/FieldGuideEmbed/.build/release/FieldGuideEmbed",
+            "preLaunchTask": "swift: Build Release FieldGuideEmbed (FieldGuideEmbed)"
+        }
+    ]
+}

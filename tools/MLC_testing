@@ -1,0 +1,48 @@
+from mlc_llm import MLCEngine
+
+MODEL = "HF://mlc-ai/Phi-3-mini-4k-instruct-q4f16_1-MLC"  # or any MLC model
+
+SYSTEM_PROMPT = """You are “FieldGuide,” an offline-first first-aid/survival assistant.
+Answer ONLY from CONTEXT. If key info is missing, say so and give universal, time-critical safety steps (e.g., call emergency services, scene safety, direct pressure).
+Be concise (≤200 words). Number the actions. Cite every actionable step with [D#]. No internal reasoning.
+Sections: Title / RED FLAGS / DO NOW — Step-by-step / When to Escalate / What to Avoid / Sources / confidence: <high|medium|low>."""
+
+# Example RAG CONTEXT (replace with your retrieved chunks)
+CONTEXT = """[D1] Severe Bleeding — Ready.gov (2024-06)
+- Apply firm, direct pressure with a clean cloth/bandage until bleeding stops.
+- If blood soaks through, add layers; do NOT remove the first dressing.
+- Use a tourniquet only for life-threatening limb bleeding when pressure fails; place above the wound and note the time.
+- Watch for shock; keep person warm and still.
+
+[D2] Emergency Indicators — FEMA (2023-11)
+- Call emergency services for spurting/soaking bleeding, signs of shock, or if bleeding isn’t controlled in a few minutes.
+- If trained, use gloves/barriers; avoid probing/cleaning before bleeding is controlled.
+"""
+
+# Example user question (replace with your app input)
+USER_QUESTION = "Hiker with a deep forearm cut; blood is soaking through a scarf. We’re 30 minutes from the trailhead, no kit. What do I do right now?"
+
+
+def run():
+    engine = MLCEngine(MODEL, device="metal")
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        # Your app should always pass CONTEXT + USER together like this:
+        {"role": "user", "content": f"CONTEXT:\n{CONTEXT}\n\nUSER:\n{USER_QUESTION}"}
+    ]
+
+    for chunk in engine.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        stream=True,
+        temperature=0.2,
+        top_p=0.9,
+        max_tokens=500,
+    ):
+        if chunk.choices and chunk.choices[0].delta.content:
+            print(chunk.choices[0].delta.content, end="", flush=True)
+
+    engine.terminate()
+
+if __name__ == "__main__":
+    run()
