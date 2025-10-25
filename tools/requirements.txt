@@ -2,3 +2,6 @@ pdfplumber
 sentence-transformers
 numpy
 tqdm
+onnxruntime
+transformers
+sqlite-vec

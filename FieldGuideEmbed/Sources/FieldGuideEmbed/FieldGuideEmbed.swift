@@ -1,9 +1,12 @@
-// The Swift Programming Language
-// https://docs.swift.org/swift-book
+// FieldGuideEmbed - Swift library for RAG-based field guide queries
+//
+// This module provides embedding generation and RAG database search
+// for iOS and macOS applications.
 
-@main
-struct FieldGuideEmbed {
-    static func main() {
-        print("Hello, world!")
-    }
-}
+import Foundation
+
+// Public API is defined in:
+// - Embedder.swift: Text embedding generation using ONNX BERT model
+// - RAGDatabase.swift: Semantic search over pre-built knowledge base
+
+

@@ -6,21 +6,27 @@ let package = Package(
   platforms: [.macOS(.v13), .iOS(.v17)],
   products: [
     .executable(name: "Embed", targets: ["Embed"]),
+    .library(name: "FieldGuideEmbed", targets: ["FieldGuideEmbed"]),
   ],
   dependencies: [
     .package(url: "https://github.com/microsoft/onnxruntime-swift-package-manager.git", from: "1.20.0"),
     .package(url: "https://github.com/huggingface/swift-transformers.git", from: "1.1.0")
   ],
   targets: [
+    .target(
+      name: "FieldGuideEmbed",
+      dependencies: [
+        .product(name: "onnxruntime",  package: "onnxruntime-swift-package-manager"),
+        .product(name: "Tokenizers", package: "swift-transformers"),
+      ]
+    ),
     .executableTarget(
       name: "Embed",
       dependencies: [
-        // Product is named 'onnxruntime'; it exposes the 'OnnxRuntimeBindings' module.
+        "FieldGuideEmbed",
         .product(name: "onnxruntime",  package: "onnxruntime-swift-package-manager"),
-        // Product is named 'Transformers' (umbrella for AutoTokenizer, etc.).
-        .product(name: "Transformers", package: "swift-transformers"),
+        .product(name: "Tokenizers", package: "swift-transformers"),
       ],
-      // Declare the model files as resources (removes the warning).
       resources: [
         .copy("Models/model.onnx"),
         .copy("Models/tokenizer.json")

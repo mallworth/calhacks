@@ -1,4 +1,5 @@
 import Foundation
+import FieldGuideEmbed
 
 // Helper function to compute cosine similarity between two vectors
 func cosineSimilarity(_ a: [Float], _ b: [Float]) -> Float {
