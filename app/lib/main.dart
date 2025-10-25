@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'services/native_channels.dart';
 
@@ -64,11 +66,7 @@ class _DemoPageState extends State<DemoPage> {
       final refEmbed = await NativeChannels.embed(referenceText);
       final queryEmbed = await NativeChannels.embed(query);
       
-      // Calculate cosine similarity (vectors are already normalized)
-      double similarity = 0.0;
-      for (int i = 0; i < refEmbed.length; i++) {
-        similarity += refEmbed[i] * queryEmbed[i];
-      }
+      final similarity = _cosineSimilarity(refEmbed, queryEmbed);
       
       final percentage = (similarity * 100).toStringAsFixed(1);
       
@@ -87,6 +85,30 @@ class _DemoPageState extends State<DemoPage> {
   Future<void> _testLLM() async {
     final res = await NativeChannels.generate(_controller.text);
     setState(() => _output = res);
+  }
+
+  double _cosineSimilarity(List<double> a, List<double> b) {
+    if (a.length != b.length || a.isEmpty) {
+      return 0.0;
+    }
+
+    double dot = 0.0;
+    double normA = 0.0;
+    double normB = 0.0;
+
+    for (var i = 0; i < a.length; i++) {
+      final av = a[i];
+      final bv = b[i];
+      dot += av * bv;
+      normA += av * av;
+      normB += bv * bv;
+    }
+
+    final denom = normA > 0 && normB > 0 ? sqrt(normA) * sqrt(normB) : 0.0;
+    if (denom == 0.0) {
+      return 0.0;
+    }
+    return (dot / denom).clamp(-1.0, 1.0);
   }
 
   @override

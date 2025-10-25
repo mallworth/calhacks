@@ -19,16 +19,18 @@ class EmbedService {
     isInitializing = true
     Task {
       do {
-        guard let modelPath = Bundle.main.path(forResource: "bge-small-en-v1.5", ofType: "onnx", inDirectory: "Models") else {
+        guard let modelPath = Bundle.main.path(forResource: "bge-small-en-v1.5", ofType: "onnx") else {
           throw NSError(domain: "EmbedService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model file not found. Expected: Models/bge-small-en-v1.5.onnx"])
         }
-        
-        guard let tokenizerDir = Bundle.main.path(forResource: nil, ofType: nil, inDirectory: "Models") else {
-          throw NSError(domain: "EmbedService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Models directory not found"])
-        }
-        
+
         print("🔄 Loading embedder from:")
         print("   Model: \(modelPath)")
+        
+        guard let tokenizerURL = Bundle.main.url(forResource: "tokenizer", withExtension: "json") else {
+          throw NSError(domain: "EmbedService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Tokenizer file not found in bundle"])
+        }
+        let tokenizerDir = tokenizerURL.deletingLastPathComponent().path
+        
         print("   Tokenizer: \(tokenizerDir)")
         
         self.embedder = try await Embedder(modelPath: modelPath, tokenizerDir: tokenizerDir)
