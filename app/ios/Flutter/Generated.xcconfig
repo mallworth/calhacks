@@ -1,8 +1,8 @@
 // This is a generated file; do not edit or check into version control.
-FLUTTER_ROOT=/Applications/flutter
-FLUTTER_APPLICATION_PATH=/Users/gavinlynch04/Desktop/calhacks/app
+FLUTTER_ROOT=/Users/max/development/flutter
+FLUTTER_APPLICATION_PATH=/Users/max/CSC/Personal/calhacks/app
 COCOAPODS_PARALLEL_CODE_SIGN=true
-FLUTTER_TARGET=/Users/gavinlynch04/Desktop/calhacks/app/lib/main.dart
+FLUTTER_TARGET=/Users/max/CSC/Personal/calhacks/app/lib/main.dart
 FLUTTER_BUILD_DIR=build
 FLUTTER_BUILD_NAME=1.0.0
 FLUTTER_BUILD_NUMBER=1
@@ -12,4 +12,4 @@ DART_DEFINES=RkxVVFRFUl9WRVJTSU9OPTMuMzUuNw==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,R
 DART_OBFUSCATION=false
 TRACK_WIDGET_CREATION=true
 TREE_SHAKE_ICONS=false
-PACKAGE_CONFIG=/Users/gavinlynch04/Desktop/calhacks/app/.dart_tool/package_config.json
+PACKAGE_CONFIG=/Users/max/CSC/Personal/calhacks/app/.dart_tool/package_config.json
