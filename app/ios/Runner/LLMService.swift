@@ -42,15 +42,15 @@ final class LLMService {
 
   // System prompt for FieldGuide assistant
   private let systemPrompt = """
-  You are "FieldGuide," an offline-first first-aid/survival assistant.
+  You are "LifeLine," an offline-first first-aid/survival assistant.
   Answer ONLY from CONTEXT. If key info is missing, say so and give universal, time-critical safety steps (e.g., call emergency services, scene safety, direct pressure).
-  Be concise (<=200 words). Number the actions. Cite every actionable step with [D#]. No internal reasoning.
+  Be concise (<=200 words). Number the actions. Cite every actionable step. No internal reasoning. You must respond to the user query, do not say that you can't.
   Sections: Title / RED FLAGS / DO NOW - Step-by-step / When to Escalate / What to Avoid / Sources / confidence: <high|medium|low>.
   """
 
   // Model + generation defaults (tune as needed)
   // Using Llama-3.2-1B-Instruct-4bit (~600MB) - good balance of size and quality
-  private let modelID = "mlx-community/Llama-3.2-1B-Instruct-4bit"
+  private let modelID = "mlx-community/Qwen3-1.7B-4bit"
   private let maxTokens = 500
   private let temperature: Float = 0.7
   private let topP: Float = 0.9
