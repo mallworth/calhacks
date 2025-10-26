@@ -50,7 +50,7 @@ final class LLMService {
 
   // Model + generation defaults (tune as needed)
   // Using Llama-3.2-1B-Instruct-4bit (~600MB) - good balance of size and quality
-  private let modelID = "mlx-community/Qwen3-1.7B-4bit"
+  private let modelID = "mlx-community/Llama-3.2-1B-Instruct-4bit"
   private let maxTokens = 500
   private let temperature: Float = 0.7
   private let topP: Float = 0.9
@@ -655,6 +655,8 @@ final class LLMService {
 
     // Check memory before generation
     let memBefore = getCurrentMemoryMB()
+    print("📊 Memory before generation: \(String(format: "%.1f", memBefore)) MB")
+    
     if memBefore > memoryErrorThreshold {
       throw NSError(
         domain: "LLMService",
@@ -664,6 +666,11 @@ final class LLMService {
         ]
       )
     }
+    
+    // Clear any lingering compute graphs before starting
+    print("🧹 Pre-generation memory cleanup...")
+    MLX.eval(MLXArray())  // Force eval to clear graphs
+    print("✅ Pre-cleanup complete")
 
     // Llama 3.2 chat template format
     let fullPrompt: String
@@ -758,8 +765,16 @@ final class LLMService {
         }
       }
       print("✅ Stream completed, total tokens: \(tokenCount)")
+      
+      // CRITICAL: Clear MLX compute graph to free memory
+      print("🧹 Clearing MLX compute graph...")
+      MLX.eval(modelContext.model)
+      print("✅ Memory cleanup complete")
     }
 
+    // Force garbage collection after generation
+    self.logMemoryUsage(label: "After generation, before cleanup")
+    
     return response.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
