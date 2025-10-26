@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'services/native_channels.dart';
 
 void main() => runApp(const MyApp());
@@ -33,6 +34,7 @@ class _DemoPageState extends State<DemoPage> {
   String _cacheInfo = "";
   bool _showLowRelevanceDisclaimer = false;
   double _maxSimilarity = 0.0;
+  bool _hideModelUi = false;
   
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _DemoPageState extends State<DemoPage> {
       
       setState(() {
         _modelCached = complete; // Only mark as cached if complete
+        _hideModelUi = complete;
         if (complete) {
           _cacheInfo = "Model ready (${files.length} files)";
           print("✅ Model is complete with ${files.length} files at: $path");
@@ -71,6 +74,7 @@ class _DemoPageState extends State<DemoPage> {
       setState(() {
         _modelCached = false;
         _cacheInfo = "Error checking cache";
+        _hideModelUi = false;
       });
     }
   }
@@ -86,7 +90,12 @@ class _DemoPageState extends State<DemoPage> {
             _llmState = (st['state'] ?? 'idle').toString();
             _llmProgress = (st['progress'] as num?)?.toDouble() ?? 0.0;
             _llmReady = (st['ready'] as bool?) ?? false;
-            
+            if (_llmReady) {
+              _hideModelUi = true;
+            }
+            if (!_hideModelUi && !_modelCached) {
+              _startModelDownload();
+            }
             // Update error message from status if in error state
             if (_llmState == 'error') {
               final statusMessage = (st['message'] ?? '').toString();
@@ -105,6 +114,7 @@ class _DemoPageState extends State<DemoPage> {
     print("🔵 Download button pressed");
     setState(() {
       _downloadError = "";
+      _hideModelUi = false;
     });
     try {
       print("🔵 Calling NativeChannels.downloadModel()");
@@ -242,7 +252,7 @@ class _DemoPageState extends State<DemoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("FieldGuide RAG Assistant")),
+      appBar: AppBar(title: const Text("LifeLine")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
@@ -250,7 +260,7 @@ class _DemoPageState extends State<DemoPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Model download section
-              if (!_llmReady && _llmState != 'loading') ...[
+              if (!_hideModelUi && !_llmReady && _llmState != 'loading') ...[
                 Card(
                   elevation: 2,
                   color: Colors.orange.shade50,
@@ -279,7 +289,9 @@ class _DemoPageState extends State<DemoPage> {
                         ],
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
-                          onPressed: (_llmState == 'loading' || _llmState == 'copying') ? null : _startModelDownload,
+                          onPressed: (_llmState == 'loading' || _llmState == 'copying' || _hideModelUi)
+                              ? null
+                              : _startModelDownload,
                           icon: Icon(_modelCached ? Icons.play_arrow : Icons.download),
                           label: Text(_modelCached ? "Load Cached Model" : "Download Model Now"),
                           style: ElevatedButton.styleFrom(
@@ -311,7 +323,7 @@ class _DemoPageState extends State<DemoPage> {
               ],
               
               // Error state with clear cache option
-              if (_llmState == 'error' && !_llmReady) ...[
+              if (!_hideModelUi && _llmState == 'error' && !_llmReady) ...[
                 Card(
                   elevation: 2,
                   color: Colors.red.shade50,
@@ -355,7 +367,7 @@ class _DemoPageState extends State<DemoPage> {
               ],
               
               // Download/loading progress
-              if (_llmState == 'loading') ...[
+              if (!_hideModelUi && _llmState == 'loading') ...[
                 Card(
                   elevation: 2,
                   color: Colors.blue.shade50,
@@ -411,10 +423,10 @@ class _DemoPageState extends State<DemoPage> {
               ],
 
               // Query input
-              const Text(
-                "Your Emergency/Survival Query:",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              // const Text(
+              //   "Your Emergency/Survival Query:",
+              //   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              // ),
               const SizedBox(height: 8),
               TextField(
                 controller: _controller,
@@ -476,7 +488,7 @@ class _DemoPageState extends State<DemoPage> {
               // LLM Response Section
               if (_llmResponse.isNotEmpty) ...[
                 const Text(
-                  "FieldGuide Response:",
+                  "LifeLine Response:",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -485,9 +497,12 @@ class _DemoPageState extends State<DemoPage> {
                   color: Colors.blue.shade50,
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(
-                      _llmResponse,
-                      style: const TextStyle(fontSize: 15, height: 1.5),
+                    child: MarkdownBody(
+                      data: _llmResponse,
+                      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                        p: const TextStyle(fontSize: 15, height: 1.5),
+                        listBullet: const TextStyle(fontSize: 15, height: 1.5),
+                      ),
                     ),
                   ),
                 ),
