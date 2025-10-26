@@ -379,6 +379,49 @@ class _DemoPageState extends State<DemoPage> {
         .trim();
   }
 
+  String _formatSnippetText(String? raw) {
+    if (raw == null) return '';
+    var text = raw.trim();
+    if (text.isEmpty) return text;
+
+    final splitSentences = text
+        .split(RegExp(r'(?<=[.!?])\s+(?=[A-Z])'))
+        .map((segment) => segment.trim())
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+
+    if (splitSentences.isEmpty) {
+      return text;
+    }
+
+    final sentences = List<String>.from(splitSentences);
+    if (sentences.length > 1 && !_looksLikeSentenceStart(sentences.first)) {
+      sentences.removeAt(0);
+    }
+
+    if (sentences.isEmpty) {
+      return text;
+    }
+
+    var result = sentences.join(' ');
+
+    final matches = RegExp(r'[.!?]').allMatches(result).toList();
+    if (matches.isNotEmpty) {
+      final last = matches.last;
+      if (last.end < result.length) {
+        result = result.substring(0, last.end);
+      }
+    }
+
+    return result.trim();
+  }
+
+  bool _looksLikeSentenceStart(String sentence) {
+    if (sentence.isEmpty) return false;
+    final first = sentence.characters.first;
+    return RegExp(r'[A-Z0-9"\'"""()]').hasMatch(first);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -731,6 +774,7 @@ class _DemoPageState extends State<DemoPage> {
     final expanded = index < _expanded.length ? _expanded[index] : false;
     final source = result['source']?.toString() ?? 'Unknown source';
     final displayName = _sourceDisplayNames[source] ?? source;
+    final snippet = _formatSnippetText(result['text']?.toString());
 
     return Card(
       elevation: 1,
@@ -770,7 +814,7 @@ class _DemoPageState extends State<DemoPage> {
                   child: Scrollbar(
                     child: SingleChildScrollView(
                       child: Text(
-                        (result['text']?.toString() ?? '').trim(),
+                        snippet,
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
