@@ -31,6 +31,8 @@ class _DemoPageState extends State<DemoPage> {
   String _downloadError = "";
   bool _modelCached = false;
   String _cacheInfo = "";
+  bool _showLowRelevanceDisclaimer = false;
+  double _maxSimilarity = 0.0;
   
   @override
   void initState() {
@@ -42,19 +44,34 @@ class _DemoPageState extends State<DemoPage> {
   
   Future<void> _checkModelCache() async {
     try {
+      print("🔍 Checking model cache from Flutter...");
       final cacheStatus = await NativeChannels.checkModelCache();
+      print("📦 Cache status received: $cacheStatus");
+      
+      final cached = (cacheStatus['cached'] as bool?) ?? false;
+      final complete = (cacheStatus['complete'] as bool?) ?? cached;
+      final files = cacheStatus['files'] as List? ?? [];
+      final path = cacheStatus['path'] as String? ?? '';
+      
       setState(() {
-        _modelCached = (cacheStatus['cached'] as bool?) ?? false;
-        if (_modelCached) {
-          final files = cacheStatus['files'] as List? ?? [];
-          _cacheInfo = "Model cached (${files.length} files)";
-          print("✅ Model is cached with ${files.length} files");
+        _modelCached = complete; // Only mark as cached if complete
+        if (complete) {
+          _cacheInfo = "Model ready (${files.length} files)";
+          print("✅ Model is complete with ${files.length} files at: $path");
+        } else if (cached && !complete) {
+          _cacheInfo = "Model incomplete (${files.length} files) - re-download needed";
+          print("⚠️ Model cache exists but incomplete: ${files.length} files at: $path");
         } else {
-          _cacheInfo = "Model not cached";
+          _cacheInfo = "Model not downloaded";
+          print("📥 Model not cached at: $path");
         }
       });
     } catch (e) {
-      print("Error checking cache: $e");
+      print("❌ Error checking cache: $e");
+      setState(() {
+        _modelCached = false;
+        _cacheInfo = "Error checking cache";
+      });
     }
   }
 
@@ -69,6 +86,14 @@ class _DemoPageState extends State<DemoPage> {
             _llmState = (st['state'] ?? 'idle').toString();
             _llmProgress = (st['progress'] as num?)?.toDouble() ?? 0.0;
             _llmReady = (st['ready'] as bool?) ?? false;
+            
+            // Update error message from status if in error state
+            if (_llmState == 'error') {
+              final statusMessage = (st['message'] ?? '').toString();
+              if (statusMessage.isNotEmpty && statusMessage != _downloadError) {
+                _downloadError = statusMessage;
+              }
+            }
           });
         } catch (_) {}
         await Future.delayed(const Duration(milliseconds: 500));
@@ -131,6 +156,8 @@ class _DemoPageState extends State<DemoPage> {
       _ragResults = [];
       _expanded = [];
       _llmResponse = "";
+      _showLowRelevanceDisclaimer = false;
+      _maxSimilarity = 0.0;
     });
 
     try {
@@ -139,18 +166,45 @@ class _DemoPageState extends State<DemoPage> {
 
       // Step 2: Search RAG database for relevant context
       final ragResults = await NativeChannels.ragSearch(queryEmbed, topK: 3);
+      
+      // Step 3: Check similarity scores (note: RAGService returns "score" not "similarity")
+      double maxSimilarity = 0.0;
+      for (final result in ragResults) {
+        final similarity = (result['score'] as num?)?.toDouble() ?? 0.0;
+        if (similarity > maxSimilarity) {
+          maxSimilarity = similarity;
+        }
+      }
+      
+      // Similarity threshold: 0.25 (25%)
+      const similarityThreshold = 0.25;
+      final hasRelevantResults = maxSimilarity >= similarityThreshold;
+      
+      // Filter results to only include those above threshold
+      final filteredResults = ragResults.where((result) {
+        final similarity = (result['score'] as num?)?.toDouble() ?? 0.0;
+        return similarity >= similarityThreshold;
+      }).toList();
 
       setState(() {
-        _ragResults = ragResults;
-        _expanded = List<bool>.filled(ragResults.length, false);
+        _ragResults = filteredResults;  // Only show relevant results
+        _expanded = List<bool>.filled(filteredResults.length, false);
         _isLoading = false;
         _isGenerating = true;
+        _maxSimilarity = maxSimilarity;
+        _showLowRelevanceDisclaimer = !hasRelevantResults;
       });
 
-      // Step 3: Format context from RAG results
-      final context = _formatContext(ragResults);
+      // Step 4: Format context from RAG results (only if relevant)
+      final context = hasRelevantResults ? _formatContext(filteredResults) : "";
+      
+      // Log similarity for debugging
+      print("📊 Max similarity: ${(maxSimilarity * 100).toStringAsFixed(1)}% (threshold: ${(similarityThreshold * 100)}%)");
+      if (!hasRelevantResults) {
+        print("⚠️ Low relevance - not passing context to LLM");
+      }
 
-      // Step 4: Generate LLM response with context
+      // Step 5: Generate LLM response (with or without context)
       final llmResponse = await NativeChannels.generate(query, context: context);
 
       setState(() {
@@ -165,6 +219,7 @@ class _DemoPageState extends State<DemoPage> {
         _llmResponse = "";
         _isLoading = false;
         _isGenerating = false;
+        _showLowRelevanceDisclaimer = false;
       });
     }
   }
@@ -270,8 +325,15 @@ class _DemoPageState extends State<DemoPage> {
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
                         ),
                         const SizedBox(height: 8),
+                        if (_downloadError.isNotEmpty) ...[
+                          Text(
+                            "Error: $_downloadError",
+                            style: const TextStyle(fontSize: 13, color: Colors.red),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         const Text(
-                          "The model download encountered an error. You can try clearing the cache and downloading again.",
+                          "The model download encountered an error. Try the options below:",
                           style: TextStyle(fontSize: 14),
                         ),
                         const SizedBox(height: 12),
@@ -429,6 +491,51 @@ class _DemoPageState extends State<DemoPage> {
                     ),
                   ),
                 ),
+                
+                // Low relevance disclaimer
+                if (_showLowRelevanceDisclaimer) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      border: Border.all(color: Colors.red.shade300, width: 2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning, color: Colors.red.shade700, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "⚠️ Low Relevance Warning",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "The retrieved information has low similarity to your query (${(_maxSimilarity * 100).toStringAsFixed(0)}% match). This response is NOT based on expert-verified sources and may not be accurate. For medical emergencies, always call 911 or consult a healthcare professional.",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red.shade800,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                
                 const SizedBox(height: 24),
               ],
               

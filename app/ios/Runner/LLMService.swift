@@ -99,39 +99,67 @@ final class LLMService {
     guard let base = appSupportMLXCacheURL else {
       print("⚠️ Cache directory not available")
       print("📥 Model: \(modelID) - awaiting download")
+      DispatchQueue.main.async { [weak self] in
+        self?.statusState = "idle"
+        self?.statusMessage = "Model not downloaded"
+      }
       return
     }
     
     let modelPath = base.appendingPathComponent("models--\(modelID.replacingOccurrences(of: "/", with: "--"))")
     
+    print("🔍 Checking for cached model at: \(modelPath.path)")
+    
     if FileManager.default.fileExists(atPath: modelPath.path) {
-      print("✅ Found cached model at: \(modelPath.path)")
+      print("✅ Found model directory")
       
       // Check if cache has all required files
       do {
         let contents = try FileManager.default.contentsOfDirectory(atPath: modelPath.path)
         print("📁 Cache contains \(contents.count) files: \(contents.joined(separator: ", "))")
         
-        // Look for key model files
-        let hasModelWeights = contents.contains { $0.contains(".safetensors") || $0.contains(".gguf") }
+        // Look for model weight files - MLX models use safetensors
+        let hasWeights = contents.contains { file in
+          file.hasSuffix(".safetensors") || 
+          file.hasSuffix(".gguf") || 
+          file.contains("model") ||
+          file.contains("weight")
+        }
         let hasConfig = contents.contains { $0.contains("config.json") }
+        let hasTokenizer = contents.contains { $0.contains("tokenizer") }
         
-        if hasModelWeights && hasConfig {
-          print("✅ Cache appears complete - auto-loading model...")
-          statusState = "loading"
-          statusMessage = "Loading cached model..."
+        print("📊 Cache validation: weights=\(hasWeights), config=\(hasConfig), tokenizer=\(hasTokenizer)")
+        
+        if hasWeights && hasConfig {
+          print("✅ Cache is COMPLETE - auto-loading model now...")
+          DispatchQueue.main.async { [weak self] in
+            self?.statusState = "loading"
+            self?.statusMessage = "Loading cached model..."
+          }
+          // Small delay to let UI update
+          try? await Task.sleep(nanoseconds: 500_000_000)
           initializeRealLLMIfNeeded()
         } else {
-          print("⚠️ Cache incomplete (weights: \(hasModelWeights), config: \(hasConfig)) - user must download")
-          print("📥 Model: \(modelID) - awaiting download")
+          print("⚠️ Cache INCOMPLETE (weights: \(hasWeights), config: \(hasConfig), tokenizer: \(hasTokenizer))")
+          print("📥 User must download complete model")
+          DispatchQueue.main.async { [weak self] in
+            self?.statusState = "error"
+            self?.statusMessage = "Cached model incomplete - please download"
+          }
         }
       } catch {
-        print("⚠️ Error checking cache: \(error)")
-        print("📥 Model: \(modelID) - awaiting download")
+        print("⚠️ Error reading cache directory: \(error)")
+        DispatchQueue.main.async { [weak self] in
+          self?.statusState = "idle"
+          self?.statusMessage = "Model not downloaded"
+        }
       }
     } else {
-      print("📥 Model not cached at: \(modelPath.path)")
-      print("📥 Model: \(modelID) - awaiting download")
+      print("📥 No cached model found at: \(modelPath.path)")
+      DispatchQueue.main.async { [weak self] in
+        self?.statusState = "idle"
+        self?.statusMessage = "Model not downloaded"
+      }
     }
   }
   
@@ -211,25 +239,15 @@ final class LLMService {
         print("🔄 Loading MLX LLM model…")
         self.logMemoryUsage(label: "Before model load")
         
-        // Check memory before starting
+        // Log memory but don't block download
         let memoryBeforeLoad = self.getCurrentMemoryMB()
         print("📊 Initial memory: \(String(format: "%.1f", memoryBeforeLoad)) MB")
         
-        // Warn if already using significant memory
-        if memoryBeforeLoad > 400 {
-          print("⚠️ Warning: High memory usage (\(String(format: "%.1f", memoryBeforeLoad)) MB) before model load")
+        if memoryBeforeLoad > 800 {
+          print("⚠️ High memory usage (\(String(format: "%.1f", memoryBeforeLoad)) MB) - may affect model loading")
         }
         
-        // Check if we have enough headroom (need ~300-500MB for model)
-        if memoryBeforeLoad > 600 {
-          throw NSError(
-            domain: "LLMService",
-            code: -1,
-            userInfo: [
-              NSLocalizedDescriptionKey: "Not enough memory available. App is using \(Int(memoryBeforeLoad)) MB. Please close other apps and try again."
-            ]
-          )
-        }
+        print("✅ Proceeding with model load...")
         
         // Check if cache directory exists and log contents
         if let base = self.appSupportMLXCacheURL {
@@ -309,16 +327,13 @@ final class LLMService {
         print("🔍 Verifying model is usable...")
         self.logMemoryUsage(label: "After model load, before verify")
         
-        // Check memory after load
+        // Log memory after load but don't fail
         let memoryAfterLoad = self.getCurrentMemoryMB()
-        if memoryAfterLoad > 900 {
-          throw NSError(
-            domain: "LLMService",
-            code: -2,
-            userInfo: [
-              NSLocalizedDescriptionKey: "Model loaded but using too much memory (\(Int(memoryAfterLoad)) MB). This model may be too large for this device. Try a smaller model."
-            ]
-          )
+        print("📊 Memory after load: \(String(format: "%.1f", memoryAfterLoad)) MB")
+        
+        if memoryAfterLoad > 1200 {
+          print("⚠️ High memory usage after load (\(String(format: "%.1f", memoryAfterLoad)) MB)")
+          print("⚠️ This may cause issues during generation")
         }
         
         // Test that we can access the model
@@ -342,9 +357,37 @@ final class LLMService {
         self.isInitializing = false
         self.isReady = false
         self.statusState = "error"
-        self.statusMessage = "Init failed: \(error.localizedDescription)"
+        
+        // Provide more specific error messages
+        let errorMessage: String
+        if let nsError = error as NSError? {
+          print("❌ Failed to load MLX LLM - Domain: \(nsError.domain), Code: \(nsError.code)")
+          print("❌ Error description: \(nsError.localizedDescription)")
+          print("❌ Error userInfo: \(nsError.userInfo)")
+          
+          // Check for common errors
+          if nsError.domain == NSURLErrorDomain {
+            if nsError.code == NSURLErrorNotConnectedToInternet {
+              errorMessage = "No internet connection. Please check your network and try again."
+            } else if nsError.code == NSURLErrorTimedOut {
+              errorMessage = "Download timed out. Please try again or use 'Clear Cache & Retry'."
+            } else if nsError.code == NSURLErrorCannotFindHost || nsError.code == NSURLErrorCannotConnectToHost {
+              errorMessage = "Cannot reach HuggingFace servers. Please check your internet connection."
+            } else {
+              errorMessage = "Network error: \(nsError.localizedDescription)"
+            }
+          } else if nsError.localizedDescription.contains("memory") || nsError.localizedDescription.contains("Memory") {
+            errorMessage = "Not enough memory. Please close other apps and try 'Clear Cache & Retry'."
+          } else {
+            errorMessage = "Failed to load model: \(nsError.localizedDescription)"
+          }
+        } else {
+          errorMessage = "Failed to load model: \(error.localizedDescription)"
+        }
+        
+        self.statusMessage = errorMessage
         print("❌ Failed to load MLX LLM: \(error)")
-        print("❌ Error details: \(error)")
+        print("❌ Error type: \(type(of: error))")
       }
     }
   }
@@ -400,32 +443,112 @@ final class LLMService {
     
     if call.method == "clearCache" {
       print("🗑️ clearCache called from Flutter")
+      
+      // Log current memory state
+      let currentMemory = getCurrentMemoryMB()
+      print("📊 Current memory usage: \(String(format: "%.1f", currentMemory)) MB")
+      
       // Clear the model cache to allow fresh download
       if let base = appSupportMLXCacheURL {
         let modelPath = base.appendingPathComponent("models--\(modelID.replacingOccurrences(of: "/", with: "--"))")
+        
+        // Reset state first
+        print("🔄 Resetting LLM state...")
+        modelContainer = nil
+        isReady = false
+        isInitializing = false
+        initializationError = nil
+        statusState = "idle"
+        statusProgress = 0.0
+        statusMessage = ""
+        
         do {
+          var clearedSomething = false
+          
+          // Check if model directory exists
           if FileManager.default.fileExists(atPath: modelPath.path) {
+            // Get size before deletion
+            if let enumerator = FileManager.default.enumerator(at: modelPath, includingPropertiesForKeys: [.fileSizeKey], options: [], errorHandler: nil) {
+              var totalSize: Int64 = 0
+              for case let fileURL as URL in enumerator {
+                if let fileAttributes = try? fileURL.resourceValues(forKeys: [.fileSizeKey]),
+                   let fileSize = fileAttributes.fileSize {
+                  totalSize += Int64(fileSize)
+                }
+              }
+              let sizeInMB = Double(totalSize) / 1024.0 / 1024.0
+              print("🗑️ Deleting cache directory: \(modelPath.path)")
+              print("📦 Cache size: \(String(format: "%.1f", sizeInMB)) MB")
+            }
+            
             try FileManager.default.removeItem(at: modelPath)
-            print("✅ Cleared cache at: \(modelPath.path)")
-            
-            // Reset state
-            modelContainer = nil
-            isReady = false
-            isInitializing = false
-            initializationError = nil
-            statusState = "idle"
-            statusProgress = 0.0
-            statusMessage = ""
-            
-            result(nil)
-          } else {
-            result(FlutterError(code: "NO_CACHE", message: "No cache found to clear", details: nil))
+            print("✅ Successfully cleared main cache directory")
+            clearedSomething = true
           }
+          
+          // Also clear Hub metadata directories (snapshots, refs, blobs)
+          let hubDirs = ["snapshots", "refs", "blobs"]
+          for dirName in hubDirs {
+            let dirPath = base.appendingPathComponent(dirName)
+            if FileManager.default.fileExists(atPath: dirPath.path) {
+              try? FileManager.default.removeItem(at: dirPath)
+              print("🗑️ Cleared \(dirName) directory")
+              clearedSomething = true
+            }
+          }
+          
+          // NUCLEAR OPTION: Delete ALL model directories
+          // This catches any models from previous runs or different model IDs
+          if let allContents = try? FileManager.default.contentsOfDirectory(atPath: base.path) {
+            for item in allContents {
+              let itemPath = base.appendingPathComponent(item)
+              
+              // Delete any directory starting with "models--" (all cached models)
+              if item.hasPrefix("models--") {
+                if FileManager.default.fileExists(atPath: itemPath.path) {
+                  do {
+                    try FileManager.default.removeItem(at: itemPath)
+                    print("🗑️ Cleared model directory: \(item)")
+                    clearedSomething = true
+                  } catch {
+                    print("⚠️ Failed to delete \(item): \(error)")
+                  }
+                }
+              }
+            }
+          }
+          
+          // Clear any temporary files
+          if let contents = try? FileManager.default.contentsOfDirectory(atPath: base.path) {
+            for item in contents {
+              if item.hasPrefix("tmp") || item.hasSuffix(".tmp") || 
+                 item.hasSuffix(".download") || item.hasSuffix(".partial") {
+                let tmpPath = base.appendingPathComponent(item)
+                try? FileManager.default.removeItem(at: tmpPath)
+                print("🗑️ Cleared temp file: \(item)")
+                clearedSomething = true
+              }
+            }
+          }
+          
+          if clearedSomething {
+            print("✅ Cache cleared successfully - ready for fresh download")
+          } else {
+            print("ℹ️ No cache found - nothing to clear")
+          }
+          
+          result(nil)
         } catch {
           print("❌ Failed to clear cache: \(error)")
-          result(FlutterError(code: "CLEAR_FAILED", message: "Failed to clear cache: \(error.localizedDescription)", details: nil))
+          print("❌ Error details: \(error.localizedDescription)")
+          result(FlutterError(
+            code: "CLEAR_FAILED",
+            message: "Failed to clear cache: \(error.localizedDescription)",
+            details: nil
+          ))
         }
       } else {
+        print("❌ Cache directory not available")
         result(FlutterError(code: "NO_CACHE_DIR", message: "Cache directory not available", details: nil))
       }
       return
