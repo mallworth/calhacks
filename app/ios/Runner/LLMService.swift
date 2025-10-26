@@ -49,11 +49,15 @@ final class LLMService {
   """
 
   // Model + generation defaults (tune as needed)
-  // Using a tiny 4-bit quantized model to reduce memory usage
-  private let modelID = "mlx-community/Qwen2.5-0.5B-4bit"
+  // Using Llama-3.2-1B-Instruct-4bit (~600MB) - good balance of size and quality
+  private let modelID = "mlx-community/Llama-3.2-1B-Instruct-4bit"
   private let maxTokens = 500
   private let temperature: Float = 0.7
   private let topP: Float = 0.9
+  
+  // Memory safety limits (in MB)
+  private let memoryWarningThreshold: Double = 1200.0  // Warn at 1.2GB
+  private let memoryErrorThreshold: Double = 1500.0    // Fail at 1.5GB
 
   init(binaryMessenger: FlutterBinaryMessenger) {
     self.channel = FlutterMethodChannel(
@@ -79,13 +83,55 @@ final class LLMService {
     // Log initial memory usage
     logMemoryUsage(label: "LLMService init")
 
-    // Do NOT auto-initialize - wait for user to trigger download
+    // Check if model is already cached
     if USE_REAL_LLM {
-      print("✅ LLMService initialized - model will download on user request")
-      print("📦 Model: \(modelID) (smaller model for memory constraints)")
+      Task.detached { [weak self] in
+        await self?.checkForCachedModel()
+      }
     } else {
       print("✅ LLMService ready (mock mode - enable USE_REAL_LLM for real model)")
       self.isReady = true
+    }
+  }
+  
+  // Check if model is already cached and load it
+  private func checkForCachedModel() async {
+    guard let base = appSupportMLXCacheURL else {
+      print("⚠️ Cache directory not available")
+      print("📥 Model: \(modelID) - awaiting download")
+      return
+    }
+    
+    let modelPath = base.appendingPathComponent("models--\(modelID.replacingOccurrences(of: "/", with: "--"))")
+    
+    if FileManager.default.fileExists(atPath: modelPath.path) {
+      print("✅ Found cached model at: \(modelPath.path)")
+      
+      // Check if cache has all required files
+      do {
+        let contents = try FileManager.default.contentsOfDirectory(atPath: modelPath.path)
+        print("📁 Cache contains \(contents.count) files: \(contents.joined(separator: ", "))")
+        
+        // Look for key model files
+        let hasModelWeights = contents.contains { $0.contains(".safetensors") || $0.contains(".gguf") }
+        let hasConfig = contents.contains { $0.contains("config.json") }
+        
+        if hasModelWeights && hasConfig {
+          print("✅ Cache appears complete - auto-loading model...")
+          statusState = "loading"
+          statusMessage = "Loading cached model..."
+          initializeRealLLMIfNeeded()
+        } else {
+          print("⚠️ Cache incomplete (weights: \(hasModelWeights), config: \(hasConfig)) - user must download")
+          print("📥 Model: \(modelID) - awaiting download")
+        }
+      } catch {
+        print("⚠️ Error checking cache: \(error)")
+        print("📥 Model: \(modelID) - awaiting download")
+      }
+    } else {
+      print("📥 Model not cached at: \(modelPath.path)")
+      print("📥 Model: \(modelID) - awaiting download")
     }
   }
   
@@ -104,6 +150,51 @@ final class LLMService {
       print("💾 Memory [\(label)]: \(String(format: "%.1f", usedMB)) MB")
     }
   }
+  
+  // Memory pressure check - returns true if safe to continue
+  private func checkMemoryPressure(label: String, maxMemoryMB: Double = 800.0) -> Bool {
+    var info = mach_task_basic_info()
+    var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+    let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+      $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+        task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+      }
+    }
+    
+    if kerr == KERN_SUCCESS {
+      let usedMB = Double(info.resident_size) / 1024.0 / 1024.0
+      print("💾 Memory check [\(label)]: \(String(format: "%.1f", usedMB)) MB / \(String(format: "%.1f", maxMemoryMB)) MB limit")
+      
+      if usedMB > maxMemoryMB {
+        print("⚠️ Memory pressure HIGH: \(String(format: "%.1f", usedMB)) MB exceeds \(String(format: "%.1f", maxMemoryMB)) MB limit")
+        return false
+      }
+      
+      if usedMB > maxMemoryMB * 0.9 {
+        print("⚠️ Memory pressure WARNING: approaching limit at \(String(format: "%.1f", usedMB)) MB")
+      }
+      
+      return true
+    }
+    
+    return true // If we can't check, assume it's okay
+  }
+  
+  // Get current memory usage in MB
+  private func getCurrentMemoryMB() -> Double {
+    var info = mach_task_basic_info()
+    var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+    let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+      $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+        task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+      }
+    }
+    
+    if kerr == KERN_SUCCESS {
+      return Double(info.resident_size) / 1024.0 / 1024.0
+    }
+    return 0.0
+  }
 
   // MARK: - Initialization
 
@@ -119,6 +210,26 @@ final class LLMService {
       do {
         print("🔄 Loading MLX LLM model…")
         self.logMemoryUsage(label: "Before model load")
+        
+        // Check memory before starting
+        let memoryBeforeLoad = self.getCurrentMemoryMB()
+        print("📊 Initial memory: \(String(format: "%.1f", memoryBeforeLoad)) MB")
+        
+        // Warn if already using significant memory
+        if memoryBeforeLoad > 400 {
+          print("⚠️ Warning: High memory usage (\(String(format: "%.1f", memoryBeforeLoad)) MB) before model load")
+        }
+        
+        // Check if we have enough headroom (need ~300-500MB for model)
+        if memoryBeforeLoad > 600 {
+          throw NSError(
+            domain: "LLMService",
+            code: -1,
+            userInfo: [
+              NSLocalizedDescriptionKey: "Not enough memory available. App is using \(Int(memoryBeforeLoad)) MB. Please close other apps and try again."
+            ]
+          )
+        }
         
         // Check if cache directory exists and log contents
         if let base = self.appSupportMLXCacheURL {
@@ -146,23 +257,70 @@ final class LLMService {
         }
 
         var lastProgress: Double = 0.0
+        var lastProgressTime = Date()
+        var stuckCount = 0
+        
+        print("🚀 Starting model download/load from HuggingFace...")
+        self.statusState = "loading"
+        self.statusMessage = "Initializing download..."
+        
         let container = try await LLMModelFactory.shared.loadContainer(
           hub: hub,
           configuration: configuration
         ) { progress in
+          let now = Date()
           let pct = Int(progress.fractionCompleted * 100.0)
-          // Only log every 5% to avoid spam
+          
+          // Check if progress is stuck
+          if progress.fractionCompleted == lastProgress {
+            let timeSinceLastProgress = now.timeIntervalSince(lastProgressTime)
+            if timeSinceLastProgress > 30 {
+              stuckCount += 1
+              print("⚠️ Download appears stuck at \(pct)% for \(Int(timeSinceLastProgress))s")
+              if stuckCount > 3 {
+                print("❌ Download stuck too long - may need to retry")
+              }
+            }
+          } else {
+            stuckCount = 0
+            lastProgressTime = now
+          }
+          
+          // Log progress
           if progress.fractionCompleted - lastProgress >= 0.05 || progress.fractionCompleted == 1.0 {
-            print("📥 Model download progress: \(pct)% (total: \(progress.totalUnitCount) bytes, completed: \(progress.completedUnitCount) bytes)")
+            let totalMB = Double(progress.totalUnitCount) / 1024.0 / 1024.0
+            let completedMB = Double(progress.completedUnitCount) / 1024.0 / 1024.0
+            print("📥 Model download: \(pct)% (\(String(format: "%.1f", completedMB)) / \(String(format: "%.1f", totalMB)) MB)")
             lastProgress = progress.fractionCompleted
           }
+          
           self.statusState = "loading"
           self.statusProgress = progress.fractionCompleted
-          self.statusMessage = "Downloading or verifying model (\(pct)%)"
+          
+          if progress.totalUnitCount > 0 {
+            let totalMB = Double(progress.totalUnitCount) / 1024.0 / 1024.0
+            let completedMB = Double(progress.completedUnitCount) / 1024.0 / 1024.0
+            self.statusMessage = "Downloading model: \(String(format: "%.1f", completedMB)) / \(String(format: "%.1f", totalMB)) MB (\(pct)%)"
+          } else {
+            self.statusMessage = "Downloading model (\(pct)%)"
+          }
         }
 
         print("🔍 Verifying model is usable...")
         self.logMemoryUsage(label: "After model load, before verify")
+        
+        // Check memory after load
+        let memoryAfterLoad = self.getCurrentMemoryMB()
+        if memoryAfterLoad > 900 {
+          throw NSError(
+            domain: "LLMService",
+            code: -2,
+            userInfo: [
+              NSLocalizedDescriptionKey: "Model loaded but using too much memory (\(Int(memoryAfterLoad)) MB). This model may be too large for this device. Try a smaller model."
+            ]
+          )
+        }
+        
         // Test that we can access the model
         try await container.perform { (modelContext: ModelContext) in
           print("✓ Model context created successfully")
@@ -203,6 +361,73 @@ final class LLMService {
         "ready": isReady
       ]
       result(dict)
+      return
+    }
+    
+    if call.method == "checkCache" {
+      // Check if model is cached
+      guard let base = appSupportMLXCacheURL else {
+        result([
+          "cached": false,
+          "path": "",
+          "files": []
+        ])
+        return
+      }
+      
+      let modelPath = base.appendingPathComponent("models--\(modelID.replacingOccurrences(of: "/", with: "--"))")
+      
+      if FileManager.default.fileExists(atPath: modelPath.path) {
+        let contents = (try? FileManager.default.contentsOfDirectory(atPath: modelPath.path)) ?? []
+        let hasModelWeights = contents.contains { $0.contains(".safetensors") || $0.contains(".gguf") }
+        let hasConfig = contents.contains { $0.contains("config.json") }
+        
+        result([
+          "cached": hasModelWeights && hasConfig,
+          "path": modelPath.path,
+          "files": contents,
+          "complete": hasModelWeights && hasConfig
+        ])
+      } else {
+        result([
+          "cached": false,
+          "path": modelPath.path,
+          "files": []
+        ])
+      }
+      return
+    }
+    
+    if call.method == "clearCache" {
+      print("🗑️ clearCache called from Flutter")
+      // Clear the model cache to allow fresh download
+      if let base = appSupportMLXCacheURL {
+        let modelPath = base.appendingPathComponent("models--\(modelID.replacingOccurrences(of: "/", with: "--"))")
+        do {
+          if FileManager.default.fileExists(atPath: modelPath.path) {
+            try FileManager.default.removeItem(at: modelPath)
+            print("✅ Cleared cache at: \(modelPath.path)")
+            
+            // Reset state
+            modelContainer = nil
+            isReady = false
+            isInitializing = false
+            initializationError = nil
+            statusState = "idle"
+            statusProgress = 0.0
+            statusMessage = ""
+            
+            result(nil)
+          } else {
+            result(FlutterError(code: "NO_CACHE", message: "No cache found to clear", details: nil))
+          }
+        } catch {
+          print("❌ Failed to clear cache: \(error)")
+          result(FlutterError(code: "CLEAR_FAILED", message: "Failed to clear cache: \(error.localizedDescription)", details: nil))
+        }
+      } else {
+        result(FlutterError(code: "NO_CACHE_DIR", message: "Cache directory not available", details: nil))
+      }
       return
     }
 
@@ -305,26 +530,40 @@ final class LLMService {
     container: ModelContainer
   ) async throws -> String {
 
-    // Qwen2.5 chat template format
+    // Check memory before generation
+    let memBefore = getCurrentMemoryMB()
+    if memBefore > memoryErrorThreshold {
+      throw NSError(
+        domain: "LLMService",
+        code: -3,
+        userInfo: [
+          NSLocalizedDescriptionKey: "Memory too high (\(Int(memBefore)) MB) to generate response safely. Please restart the app."
+        ]
+      )
+    }
+
+    // Llama 3.2 chat template format
     let fullPrompt: String
     if context.isEmpty {
       fullPrompt = """
-      <|im_start|>system
-      \(systemPrompt)<|im_end|>
-      <|im_start|>user
-      \(prompt)<|im_end|>
-      <|im_start|>assistant
+      <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+      
+      \(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>
+      
+      \(prompt)<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+      
       """
     } else {
       fullPrompt = """
-      <|im_start|>system
+      <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+      
       \(systemPrompt)
       
       CONTEXT:
-      \(context)<|im_end|>
-      <|im_start|>user
-      \(prompt)<|im_end|>
-      <|im_start|>assistant
+      \(context)<|eot_id|><|start_header_id|>user<|end_header_id|>
+      
+      \(prompt)<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+      
       """
     }
 
@@ -353,8 +592,9 @@ final class LLMService {
 
       print("📖 Reading generation stream...")
       var tokenCount = 0
-      let stopTokens = ["<|im_end|>", "<|im_start|>"]
+      let stopTokens = ["<|eot_id|>", "<|end_of_text|>"]
       var shouldStop = false
+      var lastMemoryCheck = 0
       
       for try await generation in stream {
         if shouldStop { break }
@@ -362,6 +602,21 @@ final class LLMService {
         if let chunk = generation.chunk {
           response += chunk
           tokenCount += 1
+          
+          // Check memory every 20 tokens
+          if tokenCount - lastMemoryCheck >= 20 {
+            let currentMemory = self.getCurrentMemoryMB()
+            if currentMemory > self.memoryErrorThreshold {
+              print("⚠️ Memory limit reached during generation (\(String(format: "%.1f", currentMemory)) MB) - stopping early")
+              response += "\n\n[Response truncated due to memory constraints]"
+              shouldStop = true
+              break
+            }
+            if currentMemory > self.memoryWarningThreshold {
+              print("⚠️ Memory warning during generation: \(String(format: "%.1f", currentMemory)) MB")
+            }
+            lastMemoryCheck = tokenCount
+          }
           
           // Check if we've hit a stop token
           for stopToken in stopTokens {

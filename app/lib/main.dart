@@ -29,12 +29,33 @@ class _DemoPageState extends State<DemoPage> {
   bool _llmReady = false;
   bool _pollingStatus = false;
   String _downloadError = "";
+  bool _modelCached = false;
+  String _cacheInfo = "";
   
   @override
   void initState() {
     super.initState();
+    _checkModelCache();
     _startPollingLLMStatus();
     setState(() => _output = "Ready! Enter your query above.");
+  }
+  
+  Future<void> _checkModelCache() async {
+    try {
+      final cacheStatus = await NativeChannels.checkModelCache();
+      setState(() {
+        _modelCached = (cacheStatus['cached'] as bool?) ?? false;
+        if (_modelCached) {
+          final files = cacheStatus['files'] as List? ?? [];
+          _cacheInfo = "Model cached (${files.length} files)";
+          print("✅ Model is cached with ${files.length} files");
+        } else {
+          _cacheInfo = "Model not cached";
+        }
+      });
+    } catch (e) {
+      print("Error checking cache: $e");
+    }
   }
 
   void _startPollingLLMStatus() {
@@ -68,6 +89,25 @@ class _DemoPageState extends State<DemoPage> {
       print("🔴 downloadModel() error: $e");
       setState(() {
         _downloadError = e.toString();
+      });
+    }
+  }
+  
+  Future<void> _clearCacheAndRetry() async {
+    print("🧹 Clear cache and retry");
+    setState(() {
+      _downloadError = "";
+      _llmState = 'idle';
+    });
+    try {
+      await NativeChannels.clearModelCache();
+      print("✅ Cache cleared, starting download");
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _startModelDownload();
+    } catch (e) {
+      print("🔴 clearCache error: $e");
+      setState(() {
+        _downloadError = "Failed to clear cache: ${e.toString()}";
       });
     }
   }
@@ -169,15 +209,24 @@ class _DemoPageState extends State<DemoPage> {
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          "Download the AI model (~2GB) to enable intelligent responses. This only needs to be done once.",
-                          style: TextStyle(fontSize: 14),
+                        Text(
+                          _modelCached 
+                            ? "Model files found in cache. Click below to load the model."
+                            : "Download the AI model (~600MB) to enable intelligent responses. This only needs to be done once.",
+                          style: const TextStyle(fontSize: 14),
                         ),
+                        if (_modelCached) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _cacheInfo,
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed: (_llmState == 'loading' || _llmState == 'copying') ? null : _startModelDownload,
-                          icon: const Icon(Icons.download),
-                          label: const Text("Download Model Now"),
+                          icon: Icon(_modelCached ? Icons.play_arrow : Icons.download),
+                          label: Text(_modelCached ? "Load Cached Model" : "Download Model Now"),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
@@ -188,7 +237,54 @@ class _DemoPageState extends State<DemoPage> {
                             "Error: $_downloadError",
                             style: const TextStyle(color: Colors.red, fontSize: 12),
                           ),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: _clearCacheAndRetry,
+                            icon: const Icon(Icons.delete_forever),
+                            label: const Text("Clear Cache & Retry"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
                         ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              
+              // Error state with clear cache option
+              if (_llmState == 'error' && !_llmReady) ...[
+                Card(
+                  elevation: 2,
+                  color: Colors.red.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "❌ Model Download Failed",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "The model download encountered an error. You can try clearing the cache and downloading again.",
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _clearCacheAndRetry,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text("Clear Cache & Retry"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
                       ],
                     ),
                   ),

@@ -99,4 +99,29 @@ class NativeChannels {
       rethrow;
     }
   }
+  
+  static Future<void> clearModelCache() async {
+    try {
+      await _llm.invokeMethod<void>('clearCache');
+    } on PlatformException catch (e) {
+      print('PlatformException in clearCache: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Unexpected error in clearCache: $e');
+      rethrow;
+    }
+  }
+  
+  static Future<Map<String, dynamic>> checkModelCache() async {
+    try {
+      final res = await _llm.invokeMethod<dynamic>('checkCache');
+      if (res is Map) {
+        return res.map((k, v) => MapEntry(k.toString(), v));
+      }
+      return const { 'cached': false, 'path': '', 'files': [] };
+    } catch (e) {
+      print('Unexpected error in checkCache: $e');
+      return const { 'cached': false, 'path': '', 'files': [] };
+    }
+  }
 }
