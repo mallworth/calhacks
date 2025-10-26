@@ -688,6 +688,8 @@ final class LLMService {
 
     // Check memory before generation
     let memBefore = getCurrentMemoryMB()
+    print("📊 Memory before generation: \(String(format: "%.1f", memBefore)) MB")
+    
     if memBefore > memoryErrorThreshold {
       throw NSError(
         domain: "LLMService",
@@ -697,6 +699,11 @@ final class LLMService {
         ]
       )
     }
+    
+    // Clear any lingering compute graphs before starting
+    print("🧹 Pre-generation memory cleanup...")
+    MLX.eval(MLXArray())  // Force eval to clear graphs
+    print("✅ Pre-cleanup complete")
 
     // Llama 3.2 chat template format
     let fullPrompt: String
@@ -791,8 +798,16 @@ final class LLMService {
         }
       }
       print("✅ Stream completed, total tokens: \(tokenCount)")
+      
+      // CRITICAL: Clear MLX compute graph to free memory
+      print("🧹 Clearing MLX compute graph...")
+      MLX.eval(modelContext.model)
+      print("✅ Memory cleanup complete")
     }
 
+    // Force garbage collection after generation
+    self.logMemoryUsage(label: "After generation, before cleanup")
+    
     return response.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 

@@ -217,8 +217,11 @@ class _DemoPageState extends State<DemoPage> {
       // Step 5: Generate LLM response (with or without context)
       final llmResponse = await NativeChannels.generate(query, context: context);
 
+      // Filter out <think> tags from the response
+      final filteredResponse = _removeThinkTags(llmResponse);
+
       setState(() {
-        _llmResponse = llmResponse;
+        _llmResponse = filteredResponse;
         _isGenerating = false;
       });
     } catch (e) {
@@ -249,16 +252,29 @@ class _DemoPageState extends State<DemoPage> {
     return buffer.toString().trim();
   }
 
+  String _removeThinkTags(String text) {
+    // Remove everything between <think> and </think> tags (including the tags)
+    // This handles multiple think blocks and multiline content
+    return text
+        .replaceAll(RegExp(r'<think>.*?</think>', dotAll: true), '')
+        .trim();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("LifeLine")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+    return GestureDetector(
+      // Dismiss keyboard when tapping outside
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text("FieldGuide RAG Assistant")),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // Model download section
               if (!_hideModelUi && !_llmReady && _llmState != 'loading') ...[
                 Card(
@@ -442,7 +458,12 @@ class _DemoPageState extends State<DemoPage> {
               
               // Submit button
               ElevatedButton(
-                onPressed: (_isLoading || _isGenerating || !_llmReady) ? null : _calculateSimilarity,
+                onPressed: (_isLoading || _isGenerating || !_llmReady) 
+                  ? null 
+                  : () {
+                      FocusScope.of(context).unfocus();  // Hide keyboard
+                      _calculateSimilarity();
+                    },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -571,6 +592,7 @@ class _DemoPageState extends State<DemoPage> {
           ),
         ),
       ),
+      ),  // GestureDetector
     );
   }
 
