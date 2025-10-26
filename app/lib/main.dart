@@ -23,29 +23,59 @@ class _DemoPageState extends State<DemoPage> {
   List<bool> _expanded = [];
   String _llmResponse = "";
   bool _isGenerating = false;
+  // LLM status
+  String _llmState = 'idle';
+  double _llmProgress = 0.0;
+  bool _llmReady = false;
+  bool _pollingStatus = false;
+  String _downloadError = "";
   
   @override
   void initState() {
     super.initState();
-    _checkEmbedderReady();
+    _startPollingLLMStatus();
+    setState(() => _output = "Ready! Enter your query above.");
   }
-  
-  Future<void> _checkEmbedderReady() async {
-    // Wait a bit for embedder to initialize
-    await Future.delayed(const Duration(seconds: 2));
-    try {
-      // Try a test embedding
-      await NativeChannels.embed("test");
-      setState(() => _output = "Ready! Enter your query above.");
-    } catch (e) {
-      if (e.toString().contains("still loading")) {
-        // Still loading, check again
-        await Future.delayed(const Duration(seconds: 1));
-        _checkEmbedderReady();
-      } else {
-        setState(() => _output = "Error initializing: $e");
+
+  void _startPollingLLMStatus() {
+    if (_pollingStatus) return;
+    _pollingStatus = true;
+    () async {
+      while (mounted) {
+        try {
+          final st = await NativeChannels.llmStatus();
+          setState(() {
+            _llmState = (st['state'] ?? 'idle').toString();
+            _llmProgress = (st['progress'] as num?)?.toDouble() ?? 0.0;
+            _llmReady = (st['ready'] as bool?) ?? false;
+          });
+        } catch (_) {}
+        await Future.delayed(const Duration(milliseconds: 500));
       }
+    }();
+  }
+
+  Future<void> _startModelDownload() async {
+    print("🔵 Download button pressed");
+    setState(() {
+      _downloadError = "";
+    });
+    try {
+      print("🔵 Calling NativeChannels.downloadModel()");
+      await NativeChannels.downloadModel();
+      print("🔵 downloadModel() completed successfully");
+    } catch (e) {
+      print("🔴 downloadModel() error: $e");
+      setState(() {
+        _downloadError = e.toString();
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _calculateSimilarity() async {
@@ -124,6 +154,104 @@ class _DemoPageState extends State<DemoPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Model download section
+              if (!_llmReady && _llmState != 'loading') ...[
+                Card(
+                  elevation: 2,
+                  color: Colors.orange.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "⚠️ Model Not Downloaded",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Download the AI model (~2GB) to enable intelligent responses. This only needs to be done once.",
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: (_llmState == 'loading' || _llmState == 'copying') ? null : _startModelDownload,
+                          icon: const Icon(Icons.download),
+                          label: const Text("Download Model Now"),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                        if (_downloadError.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            "Error: $_downloadError",
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              
+              // Download/loading progress
+              if (_llmState == 'loading') ...[
+                Card(
+                  elevation: 2,
+                  color: Colors.blue.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Downloading model from Hugging Face…',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            Text('${(_llmProgress * 100).toStringAsFixed(0)}%'),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(value: _llmProgress > 0 ? _llmProgress.clamp(0.0, 1.0) : null),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "This may take several minutes depending on your connection.",
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              if (_llmReady) ...[
+                Card(
+                  elevation: 1,
+                  color: Colors.green.shade50,
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          "Model ready!",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               // Query input
               const Text(
                 "Your Emergency/Survival Query:",
@@ -144,7 +272,7 @@ class _DemoPageState extends State<DemoPage> {
               
               // Submit button
               ElevatedButton(
-                onPressed: (_isLoading || _isGenerating) ? null : _calculateSimilarity,
+                onPressed: (_isLoading || _isGenerating || !_llmReady) ? null : _calculateSimilarity,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),

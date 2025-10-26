@@ -75,4 +75,28 @@ class NativeChannels {
       return [];
     }
   }
+
+  static Future<Map<String, dynamic>> llmStatus() async {
+    try {
+      final res = await _llm.invokeMethod<dynamic>('status');
+      if (res is Map) {
+        return res.map((k, v) => MapEntry(k.toString(), v));
+      }
+      return const { 'state': 'unknown', 'progress': 0.0, 'ready': false };
+    } catch (e) {
+      return const { 'state': 'error', 'progress': 0.0, 'ready': false };
+    }
+  }
+
+  static Future<void> downloadModel() async {
+    try {
+      await _llm.invokeMethod<void>('downloadModel');
+    } on PlatformException catch (e) {
+      print('PlatformException in downloadModel: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Unexpected error in downloadModel: $e');
+      rethrow;
+    }
+  }
 }

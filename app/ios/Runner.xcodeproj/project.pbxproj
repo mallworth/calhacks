@@ -12,10 +12,8 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		501CB62F2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 501CB62E2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx */; };
 		501CB6312EAD40C400A34FA5 /* tokenizer.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6302EAD40C400A34FA5 /* tokenizer.json */; };
-		501CB6332EAD47FF00A34FA5 /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6322EAD47FF00A34FA5 /* config.json */; };
-		501CB6352EAD481300A34FA5 /* tokenizer_config.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6342EAD481300A34FA5 /* tokenizer_config.json */; };
+		501CB6332EAD481300A34FA5 /* tokenizer_config.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6342EAD481300A34FA5 /* tokenizer_config.json */; };
 		501CB6372EAD482000A34FA5 /* special_tokens_map.json in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6362EAD482000A34FA5 /* special_tokens_map.json */; };
-		501CB6392EAD482C00A34FA5 /* vocab.txt in Resources */ = {isa = PBXBuildFile; fileRef = 501CB6382EAD482C00A34FA5 /* vocab.txt */; };
 		501CB63B2EAD5F9A00A34FA5 /* rag_database.db in Resources */ = {isa = PBXBuildFile; fileRef = 501CB63A2EAD5F9A00A34FA5 /* rag_database.db */; };
 		501CB63F2EAD6D6D00A34FA5 /* RAGService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501CB63E2EAD6D6D00A34FA5 /* RAGService.swift */; };
 		50F181672EAC542C0067D23D /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 50F181662EAC542C0067D23D /* onnxruntime */; };
@@ -68,8 +66,8 @@
 		501CB62E2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; name = "bge-small-en-v1.5.onnx"; path = "Runner/Models/bge-small-en-v1.5.onnx"; sourceTree = "<group>"; };
 		501CB6302EAD40C400A34FA5 /* tokenizer.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = tokenizer.json; path = Runner/Models/tokenizer.json; sourceTree = "<group>"; };
 		501CB6322EAD47FF00A34FA5 /* config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = config.json; path = "../../onnx-out/config.json"; sourceTree = "<group>"; };
-		501CB6342EAD481300A34FA5 /* tokenizer_config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = tokenizer_config.json; path = "../../onnx-out/tokenizer_config.json"; sourceTree = "<group>"; };
-		501CB6362EAD482000A34FA5 /* special_tokens_map.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = special_tokens_map.json; path = "../../onnx-out/special_tokens_map.json"; sourceTree = "<group>"; };
+		501CB6342EAD481300A34FA5 /* tokenizer_config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = tokenizer_config.json; path = Runner/Models/tokenizer_config.json; sourceTree = "<group>"; };
+		501CB6362EAD482000A34FA5 /* special_tokens_map.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = special_tokens_map.json; path = Runner/Models/special_tokens_map.json; sourceTree = "<group>"; };
 		501CB6382EAD482C00A34FA5 /* vocab.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = vocab.txt; path = "../../onnx-out/vocab.txt"; sourceTree = "<group>"; };
 		501CB63A2EAD5F9A00A34FA5 /* rag_database.db */ = {isa = PBXFileReference; lastKnownFileType = file; name = rag_database.db; path = Runner/Database/rag_database.db; sourceTree = "<group>"; };
 		501CB63E2EAD6D6D00A34FA5 /* RAGService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGService.swift; sourceTree = "<group>"; };
@@ -316,12 +314,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				501CB63B2EAD5F9A00A34FA5 /* rag_database.db in Resources */,
-				501CB6392EAD482C00A34FA5 /* vocab.txt in Resources */,
-				501CB6372EAD482000A34FA5 /* special_tokens_map.json in Resources */,
-				501CB6352EAD481300A34FA5 /* tokenizer_config.json in Resources */,
-				501CB6332EAD47FF00A34FA5 /* config.json in Resources */,
-				501CB6312EAD40C400A34FA5 /* tokenizer.json in Resources */,
 				501CB62F2EAD40B200A34FA5 /* bge-small-en-v1.5.onnx in Resources */,
+				501CB6312EAD40C400A34FA5 /* tokenizer.json in Resources */,
+				501CB6332EAD481300A34FA5 /* tokenizer_config.json in Resources */,
+				501CB6372EAD482000A34FA5 /* special_tokens_map.json in Resources */,
 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,

@@ -26,7 +26,13 @@ class EmbedService {
         print("🔄 Loading embedder from:")
         print("   Model: \(modelPath)")
         
-        guard let tokenizerURL = Bundle.main.url(forResource: "tokenizer", withExtension: "json") else {
+        // Try looking in the main bundle root first, then try subdirectory
+        var tokenizerURL = Bundle.main.url(forResource: "tokenizer", withExtension: "json")
+        if tokenizerURL == nil {
+          tokenizerURL = Bundle.main.url(forResource: "tokenizer", withExtension: "json", subdirectory: "Models")
+        }
+        
+        guard let tokenizerURL = tokenizerURL else {
           throw NSError(domain: "EmbedService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Tokenizer file not found in bundle"])
         }
         let tokenizerDir = tokenizerURL.deletingLastPathComponent().path
