@@ -2,12 +2,131 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'services/native_channels.dart';
 
+const BorderRadius _radius12 = BorderRadius.all(Radius.circular(12));
+
+const Color _olivePrimary = Color(0xFF87986A);
+const Color _oliveAccent = Color(0xFF6E7C4A);
+const Color _oliveMuted = Color(0xFFB5C99A);
+const Color _oliveSurface = Color(0xFFE2E8C0);
+const Color _ivoryBackground = Color(0xFFF6F1D3);
+const Color _ivorySurface = Color(0xFFFBF7E6);
+const Color _successTint = Color(0xFFDDE7C7);
+const Color _warningTint = Color(0xFFE9DEBB);
+const Color _errorTint = Color(0xFFE7C9BA);
+const Color _successAccent = Color(0xFF4F6B34);
+const Color _warningAccent = Color(0xFF9B7A1D);
+const Color _errorAccent = Color(0xFF8C3B2A);
+const Color _textPrimary = Color(0xFF2F3523);
+const Color _textSecondary = Color(0xFF5C6144);
+
+/// Map source file names from the RAG service to the display titles used in
+/// the "Source Documents" cards. Update the placeholder values (string1,
+/// string2, etc.) to control the text shown on each card header.
+const Map<String, String> _sourceDisplayNames = {
+  '2018-First-Aid-Pocket-Guide_1.txt': 'Canadian Red Cross First Aid Pocket Guider',
+  'cold-weather-survival.txt': 'Cold Weather Survival',
+  'hewett-brumberg-et-al-2024-2024-american-heart-association-and-american-red-cross-guidelines-for-first-aid.txt': 'Red Cross Guidelines for First Aid',
+  'How to Make Water Safe in an Emergency _ Water, Sanitation, and Hygiene (WASH)-related Emergencies and Outbreaks _ CDC.txt': 'CDC Water Safety Guide',
+  'until-help-arrives-web-tutorial.txt': 'American Red Cross Until Help Arrives',
+  'USMC-Summer-Survival-Course-Handbook.txt': 'USMC Summer Survival Manual',
+  'USMC-Winter-Survival-Course-Handbook.txt': 'USMC Winter Survival Manual',
+  'WHO-ICRC-Basic-Emergency-Care.txt': 'WHO Basic Emergency Care',
+};
+
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
-  Widget build(BuildContext context) => const MaterialApp(home: DemoPage());
+  Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: _olivePrimary,
+      brightness: Brightness.light,
+    ).copyWith(
+      primary: _olivePrimary,
+      onPrimary: _ivorySurface,
+      secondary: _oliveMuted,
+      onSecondary: _textPrimary,
+      background: _ivoryBackground,
+      onBackground: _textPrimary,
+      surface: _ivorySurface,
+      onSurface: _textPrimary,
+      error: const Color(0xFFB8614B),
+      outline: _oliveMuted,
+    );
+
+    final theme = ThemeData(
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: _ivoryBackground,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: _olivePrimary,
+        foregroundColor: _ivorySurface,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      cardTheme: const CardThemeData(
+        color: _ivorySurface,
+        elevation: 1,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: _radius12),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _olivePrimary,
+          foregroundColor: _ivorySurface,
+          shape: const RoundedRectangleBorder(borderRadius: _radius12),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _olivePrimary,
+          side: const BorderSide(color: _olivePrimary, width: 1.5),
+          shape: const RoundedRectangleBorder(borderRadius: _radius12),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        ),
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        filled: true,
+        fillColor: _ivorySurface,
+        hintStyle: TextStyle(color: _textSecondary),
+        contentPadding: EdgeInsets.all(16),
+        border: OutlineInputBorder(
+          borderRadius: _radius12,
+          borderSide: BorderSide(color: _oliveMuted),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: _radius12,
+          borderSide: BorderSide(color: _oliveMuted),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: _radius12,
+          borderSide: BorderSide(color: _oliveAccent, width: 1.5),
+        ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: _oliveAccent,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: _oliveSurface,
+        thickness: 1,
+      ),
+      textTheme: ThemeData.light().textTheme.apply(
+            bodyColor: _textPrimary,
+            displayColor: _textPrimary,
+          ),
+    );
+
+    return MaterialApp(
+      theme: theme,
+      home: const DemoPage(),
+    );
+  }
 }
 
 class DemoPage extends StatefulWidget {
@@ -41,7 +160,7 @@ class _DemoPageState extends State<DemoPage> {
     super.initState();
     _checkModelCache();
     _startPollingLLMStatus();
-    setState(() => _output = "Ready! Enter your query above.");
+    setState(() => _output = "");
   }
   
   Future<void> _checkModelCache() async {
@@ -260,6 +379,49 @@ class _DemoPageState extends State<DemoPage> {
         .trim();
   }
 
+  String _formatSnippetText(String? raw) {
+    if (raw == null) return '';
+    var text = raw.trim();
+    if (text.isEmpty) return text;
+
+    final splitSentences = text
+        .split(RegExp(r'(?<=[.!?])\s+(?=[A-Z])'))
+        .map((segment) => segment.trim())
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+
+    if (splitSentences.isEmpty) {
+      return text;
+    }
+
+    final sentences = List<String>.from(splitSentences);
+    if (sentences.length > 1 && !_looksLikeSentenceStart(sentences.first)) {
+      sentences.removeAt(0);
+    }
+
+    if (sentences.isEmpty) {
+      return text;
+    }
+
+    var result = sentences.join(' ');
+
+    final matches = RegExp(r'[.!?]').allMatches(result).toList();
+    if (matches.isNotEmpty) {
+      final last = matches.last;
+      if (last.end < result.length) {
+        result = result.substring(0, last.end);
+      }
+    }
+
+    return result.trim();
+  }
+
+  bool _looksLikeSentenceStart(String sentence) {
+    if (sentence.isEmpty) return false;
+    final first = sentence.characters.first;
+    return RegExp(r'[A-Z0-9"\'"""()]').hasMatch(first);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -268,7 +430,7 @@ class _DemoPageState extends State<DemoPage> {
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text("FieldGuide RAG Assistant")),
+        appBar: AppBar(title: const Text("LifeLine")),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: SingleChildScrollView(
@@ -279,7 +441,8 @@ class _DemoPageState extends State<DemoPage> {
               if (!_hideModelUi && !_llmReady && _llmState != 'loading') ...[
                 Card(
                   elevation: 2,
-                  color: Colors.orange.shade50,
+                  color: _warningTint,
+                  shape: const RoundedRectangleBorder(borderRadius: _radius12),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -287,20 +450,24 @@ class _DemoPageState extends State<DemoPage> {
                       children: [
                         const Text(
                           "⚠️ Model Not Downloaded",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _warningAccent,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           _modelCached 
                             ? "Model files found in cache. Click below to load the model."
                             : "Download the AI model (~600MB) to enable intelligent responses. This only needs to be done once.",
-                          style: const TextStyle(fontSize: 14),
+                          style: const TextStyle(fontSize: 14, color: _textPrimary),
                         ),
                         if (_modelCached) ...[
                           const SizedBox(height: 4),
                           Text(
                             _cacheInfo,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            style: const TextStyle(fontSize: 12, color: _textSecondary),
                           ),
                         ],
                         const SizedBox(height: 12),
@@ -311,14 +478,17 @@ class _DemoPageState extends State<DemoPage> {
                           icon: Icon(_modelCached ? Icons.play_arrow : Icons.download),
                           label: Text(_modelCached ? "Load Cached Model" : "Download Model Now"),
                           style: ElevatedButton.styleFrom(
+                            backgroundColor: _oliveAccent,
+                            foregroundColor: _ivorySurface,
                             padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: const RoundedRectangleBorder(borderRadius: _radius12),
                           ),
                         ),
                         if (_downloadError.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
                             "Error: $_downloadError",
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: const TextStyle(color: _errorAccent, fontSize: 12),
                           ),
                           const SizedBox(height: 8),
                           ElevatedButton.icon(
@@ -326,8 +496,9 @@ class _DemoPageState extends State<DemoPage> {
                             icon: const Icon(Icons.delete_forever),
                             label: const Text("Clear Cache & Retry"),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              foregroundColor: Colors.white,
+                              backgroundColor: _errorAccent,
+                              foregroundColor: _ivorySurface,
+                              shape: const RoundedRectangleBorder(borderRadius: _radius12),
                             ),
                           ),
                         ],
@@ -342,7 +513,8 @@ class _DemoPageState extends State<DemoPage> {
               if (!_hideModelUi && _llmState == 'error' && !_llmReady) ...[
                 Card(
                   elevation: 2,
-                  color: Colors.red.shade50,
+                  color: _errorTint,
+                  shape: const RoundedRectangleBorder(borderRadius: _radius12),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -350,19 +522,23 @@ class _DemoPageState extends State<DemoPage> {
                       children: [
                         const Text(
                           "❌ Model Download Failed",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _errorAccent,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         if (_downloadError.isNotEmpty) ...[
                           Text(
                             "Error: $_downloadError",
-                            style: const TextStyle(fontSize: 13, color: Colors.red),
+                            style: const TextStyle(fontSize: 13, color: _errorAccent),
                           ),
                           const SizedBox(height: 12),
                         ],
                         const Text(
                           "The model download encountered an error. Try the options below:",
-                          style: TextStyle(fontSize: 14),
+                          style: TextStyle(fontSize: 14, color: _textPrimary),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
@@ -370,9 +546,10 @@ class _DemoPageState extends State<DemoPage> {
                           icon: const Icon(Icons.refresh),
                           label: const Text("Clear Cache & Retry"),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
+                            backgroundColor: _errorAccent,
+                            foregroundColor: _ivorySurface,
                             padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: const RoundedRectangleBorder(borderRadius: _radius12),
                           ),
                         ),
                       ],
@@ -386,7 +563,8 @@ class _DemoPageState extends State<DemoPage> {
               if (!_hideModelUi && _llmState == 'loading') ...[
                 Card(
                   elevation: 2,
-                  color: Colors.blue.shade50,
+                  color: _oliveSurface,
+                  shape: const RoundedRectangleBorder(borderRadius: _radius12),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -406,10 +584,6 @@ class _DemoPageState extends State<DemoPage> {
                         const SizedBox(height: 8),
                         LinearProgressIndicator(value: _llmProgress > 0 ? _llmProgress.clamp(0.0, 1.0) : null),
                         const SizedBox(height: 8),
-                        const Text(
-                          "This may take several minutes depending on your connection.",
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
-                        ),
                       ],
                     ),
                   ),
@@ -420,12 +594,13 @@ class _DemoPageState extends State<DemoPage> {
               if (_llmReady) ...[
                 Card(
                   elevation: 1,
-                  color: Colors.green.shade50,
+                  color: _successTint,
+                  shape: const RoundedRectangleBorder(borderRadius: _radius12),
                   child: const Padding(
                     padding: EdgeInsets.all(12),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        Icon(Icons.check_circle, color: _successAccent, size: 20),
                         SizedBox(width: 8),
                         Text(
                           "Model ready!",
@@ -447,11 +622,8 @@ class _DemoPageState extends State<DemoPage> {
               TextField(
                 controller: _controller,
                 maxLines: 3,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: "e.g., How do I stop severe bleeding?",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -515,7 +687,8 @@ class _DemoPageState extends State<DemoPage> {
                 const SizedBox(height: 8),
                 Card(
                   elevation: 2,
-                  color: Colors.blue.shade50,
+                  color: _oliveSurface,
+                  shape: const RoundedRectangleBorder(borderRadius: _radius12),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: MarkdownBody(
@@ -534,14 +707,14 @@ class _DemoPageState extends State<DemoPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      border: Border.all(color: Colors.red.shade300, width: 2),
-                      borderRadius: BorderRadius.circular(8),
+                      color: _errorTint,
+                      border: Border.all(color: _errorAccent, width: 1.5),
+                      borderRadius: _radius12,
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.warning, color: Colors.red.shade700, size: 20),
+                        const Icon(Icons.warning, color: _errorAccent, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -552,7 +725,7 @@ class _DemoPageState extends State<DemoPage> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.red.shade900,
+                                  color: _errorAccent,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -560,7 +733,7 @@ class _DemoPageState extends State<DemoPage> {
                                 "The retrieved information has low similarity to your query (${(_maxSimilarity * 100).toStringAsFixed(0)}% match). This response is NOT based on expert-verified sources and may not be accurate. For medical emergencies, always call 911 or consult a healthcare professional.",
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.red.shade800,
+                                  color: _errorAccent,
                                   height: 1.4,
                                 ),
                               ),
@@ -579,7 +752,7 @@ class _DemoPageState extends State<DemoPage> {
                 const Divider(),
                 const SizedBox(height: 8),
                 const Text(
-                  "Source Documents (tap to expand):",
+                  "Source Documents",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
@@ -599,13 +772,17 @@ class _DemoPageState extends State<DemoPage> {
   Widget _buildResultCard(int index) {
     final result = _ragResults[index];
     final expanded = index < _expanded.length ? _expanded[index] : false;
-    final score = (result['score'] as num?)?.toDouble() ?? 0.0;
-    final scorePercent = (score.clamp(-1.0, 1.0) * 100).toStringAsFixed(1);
+    final source = result['source']?.toString() ?? 'Unknown source';
+    final displayName = _sourceDisplayNames[source] ?? source;
+    final snippet = _formatSnippetText(result['text']?.toString());
 
     return Card(
       elevation: 1,
       margin: const EdgeInsets.only(bottom: 12),
+      color: _ivorySurface,
+      shape: const RoundedRectangleBorder(borderRadius: _radius12),
       child: InkWell(
+        borderRadius: _radius12,
         onTap: () {
           setState(() {
             if (index < _expanded.length) {
@@ -623,16 +800,11 @@ class _DemoPageState extends State<DemoPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      result['source']?.toString() ?? 'Unknown source',
+                      displayName,
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
-                  Text(
-                    "$scorePercent%",
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(expanded ? Icons.expand_less : Icons.expand_more, size: 20),
+                  Icon(expanded ? Icons.expand_less : Icons.expand_more, size: 20, color: _oliveAccent),
                 ],
               ),
               if (expanded) ...[
@@ -642,7 +814,7 @@ class _DemoPageState extends State<DemoPage> {
                   child: Scrollbar(
                     child: SingleChildScrollView(
                       child: Text(
-                        (result['text']?.toString() ?? '').trim(),
+                        snippet,
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
